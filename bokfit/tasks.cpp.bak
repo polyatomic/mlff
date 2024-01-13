@@ -1,0 +1,582 @@
+#include <iostream>
+#include <algorithm>
+#include <thread>
+#include <string>
+#include <vector>
+#include <fstream>
+
+#include "util.h"
+#include "tasks.h"
+#include "mathutil.h"
+
+using std::cout;
+using std::endl;
+using std::sort;
+using std::thread;
+using std::string;
+using std::ofstream;
+using std::ifstream;
+using std::ios;
+
+void divide(int *tsizes, int total, int nthreads) {
+   int i, rem, ts;
+   ts = total/nthreads;
+   rem = total%nthreads;
+   for (i=0; i < rem; i++) tsizes[i] = ts+1;
+   for (i=rem; i < nthreads; i++) tsizes[i] = ts;
+}
+
+void runFunctorDaDaI(int ivars[], double *dvars[], FunctorDaDaI *dcalc) {
+   int j;
+   double *rcoords, *wp;
+   int istart = ivars[0];
+   int iend = ivars[1];
+   int olength = ivars[2];
+   int nidi = ivars[3];
+   int wsi = ivars[4];
+   int ii = ivars[5];
+   double *rp = dvars[0];
+   double *wmat = dvars[1];
+   for (j = istart; j < iend; j++,ii++) {
+      rcoords = rp + j*olength;
+      wp = wmat + ii*nidi;
+      (*dcalc)(rcoords, wp, wsi);
+   }
+}
+
+// wmatct - matrix with cur_rows columns (cases) and M rows (variables)
+// Calculates dot products for subset of Ms variables from istart until istart+Ms 
+void runKCalc(double *wmatct, double *Kd, int cur_rows, int istart, int Ms) {
+   int i, j, istarti, istartj, iM;
+   istarti = istart;
+   for (i = 0; i < Ms; i++) {
+      iM = i*Ms;
+      istartj = istarti;
+      for (j = i; j < Ms; j++) {
+         Kd[iM+j] += dot_prod(wmatct+istarti*cur_rows, wmatct+istartj*cur_rows, cur_rows);
+         istartj++;
+      }
+      istarti++;
+   }
+}
+
+void runLeverageCalc(int jstart, int jend, int rowsum, int rank, int Ms, int ntot, int start, double *levmat, double *wmatc, double *wwp, double *leverages) {
+   int i, j;
+   for (i = rowsum + jstart, j = jstart; j < jend; i++, j++) {
+      MatByVec(levmat, wmatc + j*ntot + start, wwp, rank, Ms);
+      leverages[i] = dot_prod(wwp, wwp, rank);
+   }
+}
+
+bool calculate_descriptors(int N, int M, int olength, double *r, FunctorDaDaI *dcalc, double *stdevs, double *avgs, double* wmatc, int nthreads, int maxrows) {
+   int i;
+   double *wp, *wmat, *rcoords;
+   cout << "#####   Starting calculate_descriptors   #####\n";
+   if (nthreads > 1) cout << "Using " << nthreads << " threads" << endl;
+   wmat = new double[M*N];
+   for (i = 0; i < N; i++) {
+      wp = wmat + i*M;
+      rcoords = r + i*olength;
+      (*dcalc)(rcoords, wp, 0);
+   }
+   scale(wmat, M, N, wmatc, avgs, stdevs);
+   //exit(0);
+   cout << "#####   Finished calculate_descriptors   #####\n";
+   delete [] wmat;
+   /*int tc, jstart, jend, cur_rows, rowsum, ii, matcount, i, j, nr, nc;
+   int *tsizes;
+   double s;
+   double *wmat, *wmatc;
+   string fn;
+   thread threads[MAX_THREADS];
+   int ivars[MAX_THREADS][6];
+   double *dvars[MAX_THREADS][2];
+   cout << "#####   Starting calculate_descriptors   #####\n";
+   if (nthreads > 1) cout << "Using " << nthreads << " threads" << endl;
+   cout << "Row buffer size is: " << maxrows << endl;
+   tsizes = new int[nthreads];
+   wmat = new double[M*maxrows];
+   wmatc = new double[M*maxrows];
+   for (i=0; i < M; i++) {
+      avgs[i] = 0.0;
+      stdevs[i] = 0.0;
+   }
+   rowsum = 0;
+   matcount = 0;
+   for (;;) {
+      if (N - rowsum < maxrows)
+         cur_rows = N - rowsum;
+      else
+         cur_rows = maxrows;
+      divide(tsizes, cur_rows, nthreads);
+      jstart = 0;
+      jend = tsizes[0];
+      for (tc = 0, ii = 0; tc < nthreads; tc++) {
+         ivars[tc][0] = rowsum + jstart;
+         ivars[tc][1] = rowsum + jend;
+         ivars[tc][2] = olength;
+         ivars[tc][3] = M;
+         ivars[tc][4] = tc;
+         ivars[tc][5] = ii;
+         dvars[tc][0] = r;
+         dvars[tc][1] = wmat;
+         threads[tc] = thread(runFunctorDaDaI, ivars[tc], dvars[tc], dcalc);
+         ii += tsizes[tc];
+         jstart = jend;
+         if (tc < nthreads-1) jend = jstart + tsizes[tc+1];
+      }
+      for (tc = 0; tc < nthreads; tc++)
+         threads[tc].join();
+      fn = "_mat." + std::to_string(matcount) + ".bin";
+      Matrix2File(wmat, cur_rows, M, fn.c_str());
+      for (i = 0; i < cur_rows; i++) {
+         for (j = 0; j < M; j++) {
+            avgs[j] += wmat[i*M+j];
+         }
+      }
+      rowsum += cur_rows;
+      if (rowsum == N) break;
+      matcount++;
+   }
+   for (i=0; i < M; i++) avgs[i] = avgs[i]/N;
+   rowsum = 0;
+   matcount = 0;
+   for (;;) {
+      if (N - rowsum < maxrows)
+         cur_rows = N - rowsum;
+      else
+         cur_rows = maxrows;
+      fn = "_mat." + std::to_string(matcount) + ".bin";
+      File2Matrix(fn.c_str(), nr, nc, wmat);
+      for (i = 0; i < cur_rows; i++) {
+         for (j = 0; j < M; j++) {
+            s = wmat[i*M+j] - avgs[j];
+            stdevs[j] += s*s;
+         }
+      }
+      rowsum += cur_rows;
+      if (rowsum == N) break;
+      matcount++;
+   }
+   for (i = 0; i < M; i++) stdevs[i] = sqrt(stdevs[i]/N);
+   rowsum = 0;
+   matcount = 0;
+   for (;;) {
+      if (N - rowsum < maxrows)
+         cur_rows = N - rowsum;
+      else
+         cur_rows = maxrows;
+      fn = "_mat." + std::to_string(matcount) + ".bin";
+      File2Matrix(fn.c_str(), nr, nc, wmat);
+      remove(fn.c_str());
+      for (i = 0; i < cur_rows; i++) {
+         for (j = 0; j < M; j++) {
+            wmatc[i*M+j] = (wmat[i*M+j] - avgs[j])/stdevs[j];
+         }
+      }
+      fn = "_matc." + std::to_string(matcount) + ".bin";
+      Matrix2File(wmatc, cur_rows, M, fn.c_str());
+      rowsum += cur_rows;
+      if (rowsum == N) break;
+      matcount++;
+   }
+   fn = "descs.bin";
+   ofstream ofile(fn.c_str(), ios::out | ios::binary);
+   nr = N;
+   nc = M;
+   ofile.write((char*)&nr, sizeof(int));
+   ofile.write((char*)&nc, sizeof(int));
+   rowsum = 0;
+   matcount = 0;
+   for (;;) {
+      if (N - rowsum < maxrows)
+         cur_rows = N - rowsum;
+      else
+         cur_rows = maxrows;
+      fn = "_matc." + std::to_string(matcount) + ".bin";
+      File2Matrix(fn.c_str(), nr, nc, wmatc);
+      remove(fn.c_str());
+      for (i = 0; i < cur_rows; i++) {
+         for (j = 0; j < M; j++)
+            ofile.write((char*)&wmatc[i*M+j], sizeof(double));
+      }
+      rowsum += cur_rows;
+      if (rowsum == N) break;
+      matcount++;
+   }
+   ofile.close();
+   cout << "#####   Finished calculate_descriptors   #####\n";
+   delete [] wmatc;
+   delete [] wmat;
+   delete [] tsizes;*/
+   return true;
+}
+
+bool order_by_leverages(int N, int M, double *wmatc, int *ids_selected, double *leverages) {
+   int i, j, iM, rank, ii;
+   double *wmatct, *Kd, *evec, *eval, *sevec, *seval, *levmat, *dp1, *dp2, *wwp;
+   double tol, tmp, ss;
+   cout << "#####   Starting order_by_leverages   #####\n";
+   cout << "Number of rows: " << N << endl;
+   cout << "Number of basis functions: " << M << endl;
+   wmatct = new double[M*N];
+   Kd = new double[M*M];
+   evec = new double[M*M];
+   eval = new double[M];
+   sevec = new double[M*M];
+   seval = new double[M];
+   levmat = new double[M*M];
+   wwp = new double[M];
+   transpose(wmatc, wmatct, N, M);
+   for (i = 0; i < M*M; i++) Kd[i] = 0.0;
+   for (i = 0; i < M; i++) {
+      iM = i*M;
+      for (j = i; j < M; j++) {
+         Kd[iM+j] += dot_prod(wmatct + i*N, wmatct + j*N, N);
+      }
+   }
+   for (i = 1; i < M; i++) {
+      iM = i*M;
+      for (j = 0; j < i; j++) Kd[iM+j] = Kd[j*M+i];
+   }
+   cout << "Starting eigendecomposition" << endl;
+   cout << "eigs returned " << eigs(Kd, evec, eval, M) << endl;
+   tol = 1.0e-15*M*sqrt(eval[M-1]);
+   rank = 0;
+   for (i = 0; i < M; i++) {
+      if (eval[i] > 0.0) {
+         tmp = sqrt(eval[i]);
+         if (tmp > tol) rank++;
+      }
+   }
+   cout << "rank = " << rank << endl;
+   cout << "Finished eigendecomposition" << endl;
+   for (ii=0; ii < M; ii++) {
+      i = M - ii - 1;
+      for (j=0; j < M; j++) sevec[ii*M+j] = evec[i*M+j];
+      seval[ii] = eval[i];
+   }
+   for (i=0; i < M*M; i++) levmat[i] = 0.0;
+   for (i = 0; i < rank; i++) {
+      ss = sqrt(seval[i]);
+      dp1 = levmat + i*M;
+      dp2 = sevec + i*M;
+      for (j=0; j < M; j++) dp1[j] = dp2[j]/ss;
+   }
+   for (i = 0; i < N; i++) {
+      MatByVec(levmat, wmatc+i*M, wwp, rank, M);
+      leverages[i] = dot_prod(wwp, wwp, rank);
+   }
+   auto rule = [leverages](int i, int j) -> bool { return leverages[i] > leverages[j]; };
+   for (i=0; i < N; i++) ids_selected[i] = i;
+   sort(ids_selected, ids_selected+N, rule);
+   cout << "#####   Finished order_by_leverages   #####\n";
+   delete [] wwp;
+   delete [] levmat;
+   delete [] seval;
+   delete [] sevec;
+   delete [] eval;
+   delete [] evec;
+   delete [] Kd;
+   delete [] wmatct;
+   return true;
+}
+
+// Performs leverage ordering of submatrices of a large matrix saved as file
+// N - number of matrix rows
+// nsub - number of submatrices
+// M[] - array of submatrix widths
+// wmatc_name - name of matrix file
+// ids_selected - row numbers ordered according to leverage values for each submatrix (out)
+// leverages - calculated leverage values for each submatrix
+// bufsize - row buffer size
+bool order_by_leverages(int N, int M[], int nsub, const char *wmatc_name, int *ids_selected[], double *leverages[], int bufsize, int nthreads) {
+   int i, j, k, l, ntot, Ms, rowsum, cur_rows, nr, nc, iM, matcount, Ms_max, rank, ii, start, jstart, jend;
+   int *tsizes = 0;
+   double tol, tmp, ss;
+   double *Kds, *Kds2, *dp1, *dp2, *lp;
+   double *wmatc = 0;
+   double *evec = 0;
+   double *eval = 0;
+   double *sevec = 0;
+   double *seval = 0;
+   double *levmat = 0;
+   double **wwp = 0;
+   double **wmatct = 0;
+   double **Kd = 0;
+   double **Kdtmp = 0;
+   int *cur_rowss = 0;
+   thread threads[MAX_THREADS];
+   cout << "#####   Starting order_by_leverages   #####\n";
+   if (nthreads > 1) cout << "Using " << nthreads << " threads" << endl;
+   cout << "Buffer size: " << bufsize << endl;
+   cout << "Number of rows: " << N << endl;
+   ifstream ifile(wmatc_name, ios::in | ios::binary);
+   if (!ifile) return false;
+   Kd = new double*[nsub];
+   wmatct = new double*[nthreads];
+   ntot = 0;
+   Ms_max = 0;
+   for (i=0; i < nsub; i++) {
+      Ms = M[i];
+      if (Ms > Ms_max) Ms_max = Ms;
+      Kds = Kd[i] = new double[Ms*Ms];
+      for (j=0; j < Ms*Ms; j++) Kds[j] = 0.0;
+      ntot += Ms;
+   }
+   Kdtmp = new double*[nthreads];
+   for (i=0; i < nthreads; i++) Kdtmp[i] = new double[Ms_max*Ms_max];
+   cout << "Total number of basis functions: " << ntot << endl;
+   ifile.read((char*)&nr, sizeof(int));
+   ifile.read((char*)&nc, sizeof(int));
+   wmatc = new double[ntot*bufsize];
+   for (i=0; i < nthreads; i++) wmatct[i] = new double[ntot*bufsize];
+   cur_rowss = new int[nthreads];
+   rowsum = 0;
+   matcount = 0;
+   for (;;) {
+      if (N - rowsum < bufsize)
+         cur_rows = N - rowsum;
+      else
+         cur_rows = bufsize;
+      for (i = 0; i < cur_rows; i++) {
+         for (j = 0; j < ntot; j++) ifile.read((char *)&wmatc[i*ntot+j], sizeof(double));
+      }
+      transpose(wmatc, wmatct[matcount], cur_rows, ntot);
+      cur_rowss[matcount] = cur_rows;
+      matcount++;
+      rowsum += cur_rows;
+      if (matcount == nthreads || rowsum == N) {
+         cout << "rowsum: " << rowsum << endl;
+         start = 0;
+         for (l=0; l < nsub; l++) {
+            Ms = M[l];
+            Kds = Kd[l];
+            for (i = 0; i < matcount; i++) {
+               Kds2 = Kdtmp[i];
+               for (k = 0; k < Ms*Ms; k++) Kds2[k] = 0.0;
+               threads[i] = thread(runKCalc, wmatct[i], Kds2, cur_rowss[i], start, Ms);
+            }
+            for (i=0; i < matcount; i++) threads[i].join();
+            for (i = 0; i < matcount; i++) {
+               Kds2 = Kdtmp[i];
+               for (j = 0; j < Ms*Ms; j++) Kds[j] += Kds2[j];
+            }
+            start += Ms;
+         }
+         matcount = 0;
+      }
+      if (rowsum == N) break;
+   }
+   for (k = 0; k < nsub; k++) {
+      Ms = M[k];
+      Kds = Kd[k];
+      for (i = 1; i < Ms; i++) {
+         iM = i*Ms;
+         for (j = 0; j < i; j++) Kds[iM+j] = Kds[j*Ms+i];
+      }
+   }
+   evec = new double[Ms_max*Ms_max];
+   eval = new double[Ms_max];
+   sevec = new double[Ms_max*Ms_max];
+   seval = new double[Ms_max];
+   levmat = new double[Ms_max*Ms_max];
+   wwp = new double*[nthreads];
+   for (i = 0; i < nthreads; i++) wwp[i] = new double[Ms_max];
+   tsizes = new int[nthreads];
+   start = 0;
+   for (k=0; k < nsub; k++) {
+      Ms = M[k];
+      Kds = Kd[k];
+      cout << "Starting eigendecomposition(" << k << ")" << endl;
+      cout << "eigs returned " << eigs(Kds, evec, eval, Ms) << endl;
+      tol = 1.0e-15*Ms*sqrt(eval[Ms-1]);
+      rank = 0;
+      for (i = 0; i < Ms; i++) {
+         if (eval[i] > 0.0) {
+            tmp = sqrt(eval[i]);
+            if (tmp > tol) rank++;
+         }
+      }
+      cout << "rank = " << rank << endl;
+      cout << "Finished eigendecomposition" << endl;
+      for (ii = 0; ii < Ms; ii++) {
+         i = Ms-ii-1;
+         for (j = 0; j < Ms; j++) sevec[ii*Ms+j] = evec[i*Ms+j];
+         seval[ii] = eval[i];
+      }
+      for (i = 0; i < Ms*Ms; i++) levmat[i] = 0.0;
+      for (i = 0; i < rank; i++) {
+         ss = sqrt(seval[i]);
+         dp1 = levmat + i*Ms;
+         dp2 = sevec + i*Ms;
+         for (j = 0; j < Ms; j++) dp1[j] = dp2[j]/ss;
+      }
+      ifile.seekg(0, ifile.beg);
+      ifile.read((char*)&nr, sizeof(int));
+      ifile.read((char*)&nc, sizeof(int));
+      rowsum = 0;
+      for (;;) {
+         if (N - rowsum < bufsize)
+            cur_rows = N - rowsum;
+         else
+            cur_rows = bufsize;
+         divide(tsizes, cur_rows, nthreads);
+         for (i = 0; i < cur_rows; i++) {
+            for (j = 0; j < ntot; j++) ifile.read((char*)&wmatc[i*ntot+j], sizeof(double));
+         }
+         jstart = 0;
+         jend = tsizes[0];
+         for (i = 0; i < nthreads; i++) {
+            threads[i] = thread(runLeverageCalc, jstart, jend, rowsum, rank, Ms, ntot, start, levmat, wmatc, wwp[i], leverages[k]);
+            jstart = jend;
+            if (i < nthreads-1) jend = jstart + tsizes[i+1];
+         }
+         for (i=0; i < nthreads; i++) threads[i].join();
+//         for (i = rowsum, j=0; j < cur_rows; i++, j++) {
+//            MatByVec(levmat, wmatc + j*ntot + start, wwp[0], rank, Ms);
+//            leverages[k][i] = dot_prod(wwp[0], wwp[0], rank);
+//         }
+         rowsum += cur_rows;
+         if (rowsum == N) break;
+      }
+      lp = leverages[k];
+      auto rule = [lp](int i, int j) -> bool { return lp[i] > lp[j]; };
+      for (i = 0; i < N; i++) ids_selected[k][i] = i;
+      sort(ids_selected[k], ids_selected[k]+N, rule);
+      start += Ms;
+   }
+   cout << "#####   Finished order_by_leverages   #####\n";
+   ifile.close();
+   delete [] tsizes;
+   for (i=0; i < nthreads; i++) delete [] wwp[i];
+   delete [] wwp;
+   delete [] levmat;
+   delete [] seval;
+   delete [] sevec;
+   delete [] eval;
+   delete [] evec;
+   delete [] cur_rowss;
+   for (i=0; i < nthreads; i++) delete [] wmatct[i];
+   delete [] wmatc;
+   for (i=0; i < nthreads; i++) delete [] Kdtmp[i];
+   delete [] Kdtmp;
+   for (i=0; i < nsub; i++) delete [] Kd[i];
+   delete [] wmatct;
+   delete [] Kd;
+   return true;
+}
+
+bool calculate_linear_regression(int N, int M, double *wmatc, int *ids, int nt, double *Yc) {
+   int i, j, ii, ndim;
+   double rss, rss1, rss2, tmp, rs1, rs2, rs;
+   double *wmatt, *dp, *dp2, *b, *y;
+   cout << "#####   Starting calculate_linear_regression   #####\n";
+   cout << "Number of rows: " << N << endl;
+   cout << "Number of basis functions: " << M << endl;
+   cout << "Training set size: " << nt << endl;
+   wmatt = new double[M*nt];
+   b = new double[M];
+   y = new double[nt];
+   for (i = 0; i < nt; i++) {
+      ii = ids[i];
+      dp = wmatc + ii*M;
+      dp2 = wmatt + i*M;
+      for (j=0; j < M; j++) dp2[j] = dp[j];
+      y[i] = Yc[ii];
+   }
+   multiple_linear_regression_svd(nt, M, wmatt, y, b, ndim, true);
+   for (i = 0,rss1 = 0.0,rs1 = 0.0; i < nt; i++) {
+      dp = wmatt + i*M;
+      tmp = y[i] - dot_prod(b, dp, M);
+      rs1 += fabs(tmp);
+      rss1 += tmp*tmp;
+   }
+   cout << "RMSE(train) = " << sqrt(rss1/nt) << endl;
+   cout << "MAE(train) = " << rs1/nt << endl;
+   for (i = nt,rss2 = 0.0,rs2 = 0.0; i < N; i++) {
+      ii = ids[i];
+      dp = wmatc + ii*M;
+      tmp = Yc[ii] - dot_prod(b, dp, M);
+      rs2 += fabs(tmp);
+      rss2 += tmp*tmp;
+   }
+   cout << "RMSE(test) = " << sqrt(rss2/(N-nt)) << endl;
+   cout << "MAE(test) = " << rs2/(N-nt) << endl;
+   rss = rss1 + rss2;
+   rs = rs1 + rs2;
+   cout << "RMSE(total) = " << sqrt(rss/N) << endl;
+   cout << "MAE(total) = " << rs/N << endl;
+   cout << "#####   Finished calculate_linear_regression   #####\n";
+   delete [] y;
+   delete [] b;
+   delete [] wmatt;
+   return true;
+}
+
+bool calculate_linear_regression(int N, int M, int Mtot, const char *wmatc_name, int *ids, int nt, double *Yc) {
+   int i, j, k, nr, nc, mtmm, ndim;
+   double rss1, rs1, tmp, rs2, rss2, rss, rs;
+   double *wmatt, *b, *y, *dp, *dpv;
+   cout << "#####   Starting calculate_linear_regression   #####\n";
+   cout << "Number of rows: " << N << endl;
+   cout << "Number of basis functions: " << M << endl;
+   cout << "Training set size: " << nt << endl;
+   ifstream ifile(wmatc_name, ios::in | ios::binary);
+   if (!ifile) return false;
+   ifile.read((char*)&nr, sizeof(int));
+   ifile.read((char*)&nc, sizeof(int));
+   wmatt = new double[M*nt];
+   b = new double[M];
+   y = new double[nt];
+   dpv = new double[M];
+   mtmm = Mtot - M;
+   for (i = 0, k = 0; i < N; i++) {
+      if (k < nt && ids[k] == i) {
+         for (j = 0; j < M; j++) ifile.read((char*)&wmatt[k*M+j], sizeof(double));
+         ifile.seekg(mtmm*sizeof(double), ifile.cur);
+         y[k] = Yc[i];
+         k++;
+         if (k == nt) break;
+      } else {
+         ifile.seekg(Mtot*sizeof(double), ifile.cur);
+      }
+   }
+   ifile.seekg(0, ifile.beg);
+   ifile.read((char*)&nr, sizeof(int));
+   ifile.read((char*)&nc, sizeof(int));
+   multiple_linear_regression_svd(nt, M, wmatt, y, b, ndim, true);
+   for (i = 0, rss1 = 0.0, rs1 = 0.0; i < nt; i++) {
+      dp = wmatt + i*M;
+      tmp = y[i] - dot_prod(b, dp, M);
+      rs1 += fabs(tmp);
+      rss1 += tmp*tmp;
+   }
+   cout << "RMSE(train) = " << sqrt(rss1/nt) << endl;
+   cout << "MAE(train) = " << rs1/nt << endl;
+   for (i = 0, k = 0, rs2 = 0.0, rss2 = 0.0; i < N; i++) {
+      if (k < nt && ids[k] == i) {
+         ifile.seekg(Mtot*sizeof(double), ifile.cur);
+         k++;
+      } else {
+         for (j = 0; j < M; j++) ifile.read((char*)&dpv[j], sizeof(double));
+         ifile.seekg(mtmm*sizeof(double), ifile.cur);
+         tmp = Yc[i] - dot_prod(b, dpv, M);
+         rs2 += fabs(tmp);
+         rss2 += tmp*tmp;
+      }
+   }
+   cout << "RMSE(test) = " << sqrt(rss2/(N-nt)) << endl;
+   cout << "MAE(test) = " << rs2/(N-nt) << endl;
+   rss = rss1 + rss2;
+   rs = rs1 + rs2;
+   cout << "RMSE(total) = " << sqrt(rss/N) << endl;
+   cout << "MAE(total) = " << rs/N << endl;
+   cout << "#####   Finished calculate_linear_regression   #####\n";
+   ifile.close();
+   delete [] dpv;
+   delete [] y;
+   delete [] b;
+   delete [] wmatt;
+   return true;
+}

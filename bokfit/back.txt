@@ -1,0 +1,186 @@
+/*   wmatc2 = new double[nstr*ndesc2];
+   ndesc3 = descs.GetN3BDescriptors();
+   ndesc4 = descs.GetN4BDescriptors();
+   ndesc23 = ndesc2 + ndesc3;
+   wmatc23 = new double[nstr*ndesc23];
+   for (i = 0; i < nstr; i++) {
+      for (j=0; j < ndesc2; j++) wmatc2[i*ndesc2+j] = wmatc23[i*ndesc23+j] = wmatc[i*ndesc+j];
+   }
+   order_by_leverages(nstr, ndesc2, wmatc2, ids_selected2);
+   n_train2B = g_params.tss2B;
+   Yc = new double[nstr];
+   for (i=0, avg=0.0; i < nstr; i++) avg += Y[i];
+   avg /= nstr;
+   for (i=0; i < nstr; i++) Yc[i] = Y[i] - avg;
+   calculate_linear_regression(nstr, ndesc2, wmatc2, ids_selected2, n_train2B, Yc);
+   n_train3B = g_params.tss3B;
+   cout << "Number of 3B descriptors: " << ndesc3 << endl;
+   ids_selected3 = new int[nstr];
+   wmatc3 = new double[nstr*ndesc3];
+   wmatc4 = new double[nstr*ndesc4];
+   for (i = 0; i < nstr; i++) {
+      k = i*ndesc + ndesc2;
+      l = i*ndesc23 + ndesc2;
+      for (j=0; j < ndesc3; j++) wmatc3[i*ndesc3+j] = wmatc23[l+j] = wmatc[k+j];
+      k += ndesc3;
+      for (j=0; j < ndesc4; j++) wmatc4[i*ndesc4+j] = wmatc[k+j];
+   }
+   order_by_leverages(nstr, ndesc3, wmatc3, ids_selected3);
+   ids_diff = new int[nstr];
+   ids_selected2o = new int[n_train2B];
+   ids_selected3o = new int[n_train3B];
+   for (i = 0; i < n_train2B; i++) ids_selected2o[i] = ids_selected2[i];
+   for (i = 0; i < n_train3B; i++) ids_selected3o[i] = ids_selected3[i];
+   sort(ids_selected2o, ids_selected2o+n_train2B);
+   sort(ids_selected3o, ids_selected3o+n_train3B);
+   idit = set_difference(ids_selected3o, ids_selected3o+n_train3B, ids_selected2o, ids_selected2o+n_train2B, ids_diff);
+   ndiff = idit - ids_diff;
+   n_train_common23 = ndiff + n_train2B;
+   for (j=0, i=ndiff; i < n_train_common23; i++,j++) ids_diff[i] = ids_selected2o[j];
+   sort(ids_diff, ids_diff+n_train_common23);
+   cout << "Combined (2B+3B) training set size: " << n_train_common23 << endl;
+   ids_selected23 = new int[nstr];
+   itmp = new int[nstr];
+   for (i=0; i < nstr; i++) itmp[i] = i;
+   for (i=0; i < n_train_common23; i++) ids_selected23[i] = ids_diff[i];
+   set_difference(itmp, itmp+nstr, ids_selected23, ids_selected23+n_train_common23, ids_selected23+n_train_common23);
+   calculate_linear_regression(nstr, ndesc23, wmatc23, ids_selected23, n_train_common23, Yc);
+   cout << "Number of 4B descriptors: " << ndesc4 << endl;
+   ids_selected4 = new int[nstr];
+   order_by_leverages(nstr, ndesc4, wmatc4, ids_selected4);
+   n_train4B = g_params.tss4B;
+   ids_selected4o = new int[n_train4B];
+   for (i=0; i < n_train4B; i++) ids_selected4o[i] = ids_selected4[i];
+   sort(ids_selected4o, ids_selected4o+n_train4B);
+   idit = set_difference(ids_selected4o, ids_selected4o+n_train4B, ids_selected23, ids_selected23+n_train_common23, ids_diff);
+   ndiff = idit - ids_diff;
+   n_train_common = ndiff + n_train_common23;
+   for (j=0, i=ndiff; i < n_train_common; i++,j++) ids_diff[i] = ids_selected23[j];
+   sort(ids_diff, ids_diff+n_train_common);
+   cout << "Combined (2B+3B+4B) training set size: " << n_train_common << endl;
+   ids_selected = new int[nstr];
+   for (i = 0; i < n_train_common; i++) ids_selected[i] = ids_diff[i];
+   set_difference(itmp, itmp+nstr, ids_selected, ids_selected+n_train_common, ids_selected+n_train_common);
+   calculate_linear_regression(nstr, ndesc, wmatc, ids_selected, n_train_common, Yc);*/
+
+void sketch_matrices(int N, int M[], int nsub, const char *wmatc_name, int *ids_selected[], int ranks[], int n_test_rows, int *selected_variables[]) {
+   int i, j, k, nr, nc, mat_id, nrows, ncols, maxrank, r_skip1, r_skip2, Mtot, maxcols, ns, ncolsprev, n_selected_total, mat_id_prev,
+       slot_count, slot, pos, slot_prev, ncolsnew;
+   int *ids_selectedo, *ids_selected_total, *ids_selected_total_cp, *idit, *selected;
+   double *X, *y, *Xprev, *Xtmp;
+   int slot_sums[5] = {};
+   cout << "#####   Starting sketch_matrices   #####\n";
+   cout << "Number of rows: " << N << endl;
+   cout << "Number of rows to use: " << n_test_rows << endl;
+   cout << "Numbers of columns and corresponding ranks" << endl;
+   for (i=0, Mtot=0, maxrank=0, maxcols=0; i < nsub; i++) {
+      if (ranks[i] > maxrank) maxrank = ranks[i];
+      if (M[i] > maxcols) maxcols = M[i];
+      cout << M[i] << " " << ranks[i] << endl;
+      Mtot += M[i];
+   }
+   ifstream ifile(wmatc_name, ios::in | ios::binary);
+   if (!ifile) return;
+   ids_selectedo = new int[n_test_rows];
+   ids_selected_total = new int[12*n_test_rows];
+   ids_selected_total_cp = new int[12*n_test_rows];
+   y = new double[n_test_rows];
+   ifile.read((char*)&nr, sizeof(int));
+   ifile.read((char*)&nc, sizeof(int));
+   nrows = n_test_rows;
+   for (i = 0; i < nrows; i++) ids_selected_total_cp[i] = ids_selected[0][i];
+   sort(ids_selected_total_cp, ids_selected_total_cp + nrows);
+   n_selected_total = nrows;
+   for (mat_id = 1; mat_id < nsub; mat_id++) {
+      for (i = 0; i < nrows; i++) ids_selectedo[i] = ids_selected[mat_id][i];
+      sort(ids_selectedo, ids_selectedo + nrows);
+      idit = set_union(ids_selectedo, ids_selectedo + nrows, ids_selected_total_cp, ids_selected_total_cp + n_selected_total, ids_selected_total);
+      n_selected_total = idit - ids_selected_total;
+      for (i=0; i < n_selected_total; i++) ids_selected_total_cp[i] = ids_selected_total[i];
+   }
+   nrows = n_selected_total;
+   X = new double[nrows*Mtot];
+   Xprev = new double[nrows*Mtot];
+   Xtmp = new double[nrows*Mtot];
+   selected = new int[Mtot];
+   ncols = 0;
+   mat_id_prev = 0;
+   slot_count = 0;
+   for (mat_id = 0; mat_id < nsub; mat_id++) {
+      ncols += M[mat_id];
+      if (slot_count == 0)
+         slot_sums[slot_count] = M[mat_id];
+      else
+         slot_sums[slot_count] = slot_sums[slot_count-1] + M[mat_id];
+      slot_count++;
+      if (mat_id == 2 || mat_id == 6 || mat_id == 11) {
+         for (i = 0, r_skip1 = 0; i < mat_id_prev; i++) r_skip1 += M[i];
+         for (i = mat_id + 1, r_skip2 = 0; i < nsub; i++) r_skip2 += M[i];
+         for (i=0, j=0; i < N; i++) {
+            if (j < nrows && ids_selected_total[j] == i) {
+               ifile.seekg(r_skip1*sizeof(double), ifile.cur);
+               for (k = 0; k < ncols; k++) ifile.read((char*)&X[j*ncols+k], sizeof(double));
+               j++;
+               if (j == nrows) break;
+               ifile.seekg(r_skip2*sizeof(double), ifile.cur);
+            } else {
+               ifile.seekg(Mtot*sizeof(double), ifile.cur);
+            }
+         }
+         if (mat_id > 2) {
+            sketch_matrix(nrows, ncols, ncolsprev, X, Xprev, selected, ns);
+            cout << "ns: " << ns << endl;
+            slot = 0;
+            for (i = 0, j = 0; i < ns; i++) {
+               slot_prev = slot;
+               find_slot_and_pos(slot_count, slot_sums, selected[i], slot, pos);
+               if (slot != slot_prev) {
+                  ranks[mat_id_prev+slot_prev] = j;
+                  cout << mat_id_prev+slot_prev << " " << j << endl;
+                  j = 0;
+               }
+               if (2*ranks[mat_id_prev+slot] > j)
+                  selected_variables[mat_id_prev+slot][j++] = pos;
+               else {
+                  cerr << "Cannot save selected variable" << endl;
+                  exit(0);
+               }
+            }
+            ranks[mat_id_prev+slot] = j;
+            cout << mat_id_prev+slot << " " << j << endl;
+         }
+         if (mat_id == 2) {
+            for (i = 0; i < nrows*ncols; i++) Xprev[i] = X[i];
+            ncolsprev = ncols;
+         } else {
+            ncolsnew = ncolsprev + ns;
+            for (i=0; i < nrows*ncolsprev; i++) Xtmp[i] = Xprev[i];
+            for (i = 0; i < nrows; i++) {
+               for (j = 0; j < ncolsprev; j++) {
+                  Xprev[i*ncolsnew+j] = Xtmp[i*ncolsprev+j];
+               }
+               for (j = 0; j < ns; j++) {
+                  Xprev[i*ncolsnew+ncolsprev+j] = X[i*ncols+selected[j]];
+               }
+            }
+            ncolsprev = ncolsnew;
+         }
+         ifile.seekg(0, ifile.beg);
+         ifile.read((char*)&nr, sizeof(int));
+         ifile.read((char*)&nc, sizeof(int));
+         mat_id_prev = mat_id + 1;
+         ncols = 0;
+         slot_count = 0;
+      }
+   }
+   cout << "#####   Finished sketch_matrices   #####\n";
+   ifile.close();
+   delete [] selected;
+   delete [] Xtmp;
+   delete [] Xprev;
+   delete [] X;
+   delete [] y;
+   delete [] ids_selected_total_cp;
+   delete [] ids_selected_total;
+   delete [] ids_selectedo;
+}

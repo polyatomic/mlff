@@ -1,0 +1,99 @@
+Number of training configurations = 627983
+Number of atoms in configuration = 12
+Number of atom types = 2
+Atom types:
+H
+C
+Number of atom type pairs = 3
+Number of atom type triplets = 4
+Number of atom type quadruplets = 5
+Atom type pairs, minimum and maximum distances, max-min and number of grid points:
+H H 2.1033924978472416 5.277618365323514 3.17423 7
+H C 0.97125364349380605 4.1271183651550345 3.15586 17
+C C 1.2849957198372377 2.9899622071190048 1.70497 10
+Read 15 grid points for triplets of type 0
+Read 92 grid points for triplets of type 1
+Read 81 grid points for triplets of type 2
+Read 31 grid points for triplets of type 3
+Read 22 grid points for quadruplets of type 0
+Read 343 grid points for quadruplets of type 1
+Read 232 grid points for quadruplets of type 2
+Read 564 grid points for quadruplets of type 3
+Read 57 grid points for quadruplets of type 4
+Read 6 grid points for pairs of type 0
+Read 12 grid points for pairs of type 1
+Read 7 grid points for pairs of type 2
+Using 3,6 reciprocal power kernel for 2B terms
+Using 3,3 reciprocal power kernel for 3B terms
+Using 3,3 reciprocal power kernel for 4B terms
+Number of descriptors: 1462
+Number of 2B descriptors: 25
+   type 0: 6
+   type 1: 12
+   type 2: 7
+Number of 3B descriptors: 219
+   type 0: 15
+   type 1: 92
+   type 2: 81
+   type 3: 31
+Number of 4B descriptors: 1218
+   type 0: 22
+   type 1: 343
+   type 2: 232
+   type 3: 564
+   type 4: 57
+#####   Starting order_by_leverages   #####
+Using 12 threads
+Buffer size: 1000
+Number of rows: 627983
+Total number of basis functions: 1462
+Starting eigendecomposition(0)
+eigs returned 1
+rank = 6
+Finished eigendecomposition
+Starting eigendecomposition(1)
+eigs returned 1
+rank = 12
+Finished eigendecomposition
+Starting eigendecomposition(2)
+eigs returned 1
+rank = 7
+Finished eigendecomposition
+Starting eigendecomposition(3)
+eigs returned 1
+rank = 15
+Finished eigendecomposition
+Starting eigendecomposition(4)
+eigs returned 1
+rank = 82
+Finished eigendecomposition
+Starting eigendecomposition(5)
+eigs returned 1
+rank = 75
+Finished eigendecomposition
+Starting eigendecomposition(6)
+eigs returned 1
+rank = 27
+Finished eigendecomposition
+Starting eigendecomposition(7)
+eigs returned 1
+rank = 22
+Finished eigendecomposition
+Starting eigendecomposition(8)
+eigs returned 1
+rank = 250
+Finished eigendecomposition
+Starting eigendecomposition(9)
+eigs returned 1
+rank = 187
+Finished eigendecomposition
+Starting eigendecomposition(10)
+eigs returned 1
+rank = 404
+Finished eigendecomposition
+Starting eigendecomposition(11)
+eigs returned 1
+rank = 45
+Finished eigendecomposition
+#####   Finished order_by_leverages   #####
+CPU time: 1732.6 seconds

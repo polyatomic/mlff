@@ -1,0 +1,33 @@
+Number of training configurations = 627983
+Number of atoms in configuration = 12
+Number of atom types = 2
+Atom types:
+H
+C
+Number of atom type pairs = 3
+Number of atom type triplets = 4
+Number of atom type quadruplets = 5
+Atom type pairs, minimum and maximum distances, max-min and number of grid points:
+H H 2.1033924978472416 5.277618365323514 3.17423 7
+H C 0.97125364349380605 4.1271183651550345 3.15586 17
+C C 1.2849957198372377 2.9899622071190048 1.70497 10
+Read 15 grid points for triplets of type 0
+Read 92 grid points for triplets of type 1
+Read 81 grid points for triplets of type 2
+Read 31 grid points for triplets of type 3
+Read 22 grid points for quadruplets of type 0
+Read 343 grid points for quadruplets of type 1
+Read 232 grid points for quadruplets of type 2
+Read 564 grid points for quadruplets of type 3
+Read 57 grid points for quadruplets of type 4
+Read 6 grid points for pairs of type 0
+Read 12 grid points for pairs of type 1
+Read 7 grid points for pairs of type 2
+Using 3,6 reciprocal power kernel for 2B terms
+Using 3,3 reciprocal power kernel for 3B terms
+Using 3,3 reciprocal power kernel for 4B terms
+Number of descriptors: 1462
+#####   Starting calculate_descriptors   #####
+Row buffer size is: 10000
+#####   Finished calculate_descriptors   #####
+CPU time: 6202.0 seconds
