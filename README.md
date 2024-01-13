@@ -23,7 +23,7 @@ Intel oneAPI 2021 (for LAPACK). Other LAPACK implementations may be used as well
 
 ## Example usage
 
-Force field can be generated from the file [benzene.xyz](www.quantum-machine.org/gdml/data/xyz/md17_benzene2017.zip) and example input files in [examples](examples) by using the following steps:
+Force field can be generated from the file [benzene.xyz](http://www.quantum-machine.org/gdml/data/xyz/md17_benzene2017.zip) and example input files in [examples](examples) by using the following steps:
 
 1) Preliminary selection of grid points based on the closeness to training data points.  
 `bokfit -p p1.txt > res1.log`
