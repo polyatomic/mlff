@@ -1,5 +1,8 @@
 #pragma once
 
+#include <string>
+#include <vector>
+
 using std::string;
 using std::vector;
 
@@ -74,3 +77,4 @@ bool File2Array(const string& fn, int arr[]);
 vector<string> Tokenize(const string& str, const string& delimiters);
 void Matrix2File(double *X, int nrows, int ncols, const char *fn);
 void File2Matrix(const char *fn, int& nrows, int& ncols, double *X);
+void copy_file(const char *srce_file, const char *dest_file);

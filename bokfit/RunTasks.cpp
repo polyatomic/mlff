@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 #include <iomanip>
 #include <algorithm>
 
@@ -21,207 +22,15 @@ using std::set_difference;
 using std::sort;
 using std::ofstream;
 using std::ifstream;
+using std::istringstream;
 using std::ios;
-
-void analyze_triplet(Triplet& t, int na, int i, int j, int k, int pids[]) {
-   int itmp;
-   if (t.v[0] == t.v[1]) {
-      if (t.v[1] == t.v[2]) {
-         // AAA
-         pids[0] = IDX(na,i,j);
-         pids[1] = IDX(na,i,k);
-         pids[2] = IDX(na,j,k);
-      } else {
-         // AAB -> kij
-         itmp = t.v[0];
-         t.v[0] = t.v[2];
-         t.v[2] = itmp;
-         pids[0] = IDX(na,i,k);
-         pids[1] = IDX(na,j,k);
-         pids[2] = IDX(na,i,j);
-      }
-   } else {
-      if (t.v[1] == t.v[2]) {
-         // ABB
-         pids[0] = IDX(na,i,j);
-         pids[1] = IDX(na,i,k);
-         pids[2] = IDX(na,j,k);
-      } else {
-         // ABA -> jik
-         itmp = t.v[0];
-         t.v[0] = t.v[1];
-         t.v[1] = itmp;
-         pids[0] = IDX(na,i,j);
-         pids[1] = IDX(na,j,k);
-         pids[2] = IDX(na,i,k);
-      }
-   }
-}
-
-void analyze_quadruplet(Quadruplet& q, int na, int i, int j, int k, int l, int pids[]) {
-   int itmp;
-   if (q.v[0] == q.v[1]) {
-      if (q.v[1] == q.v[2]) {
-         if (q.v[2] == q.v[3]) {
-            // AAAA
-            pids[0] = IDX(na, i, j);
-            pids[1] = IDX(na, i, k);
-            pids[2] = IDX(na, i, l);
-            pids[3] = IDX(na, j, k);
-            pids[4] = IDX(na, j, l);
-            pids[5] = IDX(na, k, l);
-         } else {
-            // AAAB -> lijk
-            itmp = q.v[0];
-            q.v[0] = q.v[3];
-            q.v[3] = itmp;
-            pids[0] = IDX(na, i, l);
-            pids[1] = IDX(na, j, l);
-            pids[2] = IDX(na, k, l);
-            pids[3] = IDX(na, i, j);
-            pids[4] = IDX(na, i, k);
-            pids[5] = IDX(na, j, k);
-         }
-      } else {
-         if (q.v[2] == q.v[3]) {
-            if (q.v[1] > q.v[2]) {
-               // BBAA -> klij
-               itmp = q.v[0];
-               q.v[0] = q.v[2];
-               q.v[2] = itmp;
-               itmp = q.v[1];
-               q.v[1] = q.v[3];
-               q.v[3] = itmp;
-               pids[0] = IDX(na, k, l);
-               pids[1] = IDX(na, i, k);
-               pids[2] = IDX(na, j, k);
-               pids[3] = IDX(na, i, l);
-               pids[4] = IDX(na, j, l);
-               pids[5] = IDX(na, i, j);
-            } else {
-               // AABB
-               pids[0] = IDX(na, i, j);
-               pids[1] = IDX(na, i, k);
-               pids[2] = IDX(na, i, l);
-               pids[3] = IDX(na, j, k);
-               pids[4] = IDX(na, j, l);
-               pids[5] = IDX(na, k, l);
-            }
-         } else {
-            // AABA -> kjil
-            itmp = q.v[0];
-            q.v[0] = q.v[2];
-            q.v[2] = itmp;
-            pids[0] = IDX(na, j, k);
-            pids[1] = IDX(na, i, k);
-            pids[2] = IDX(na, k, l);
-            pids[3] = IDX(na, i, j);
-            pids[4] = IDX(na, j, l);
-            pids[5] = IDX(na, i, l);
-         }
-      }
-   } else {
-      if (q.v[1] == q.v[2]) {
-         if (q.v[2] == q.v[3]) {
-            // ABBB
-            pids[0] = IDX(na, i, j);
-            pids[1] = IDX(na, i, k);
-            pids[2] = IDX(na, i, l);
-            pids[3] = IDX(na, j, k);
-            pids[4] = IDX(na, j, l);
-            pids[5] = IDX(na, k, l);
-         } else {
-            if (q.v[0] < q.v[1]) {
-               // ABBA -> iljk 
-               itmp = q.v[1];
-               q.v[1] = q.v[3];
-               q.v[3] = itmp;
-               pids[0] = IDX(na, i, l);
-               pids[1] = IDX(na, i, j);
-               pids[2] = IDX(na, i, k);
-               pids[3] = IDX(na, j, l);
-               pids[4] = IDX(na, k, l);
-               pids[5] = IDX(na, j, k);
-            } else {
-               // BAAB -> kjil
-               itmp = q.v[0];
-               q.v[0] = q.v[2];
-               q.v[2] = itmp;
-               pids[0] = IDX(na, j, k);
-               pids[1] = IDX(na, i, k);
-               pids[2] = IDX(na, k, l);
-               pids[3] = IDX(na, i, j);
-               pids[4] = IDX(na, j, l);
-               pids[5] = IDX(na, i, l);
-            }
-         }
-      } else {
-         if (q.v[2] == q.v[3]) {
-            // ABAA -> jikl
-            itmp = q.v[1];
-            q.v[1] = q.v[0];
-            q.v[0] = itmp;
-            pids[0] = IDX(na, i, j);
-            pids[1] = IDX(na, j, k);
-            pids[2] = IDX(na, j, l);
-            pids[3] = IDX(na, i, k);
-            pids[4] = IDX(na, i, l);
-            pids[5] = IDX(na, k, l);
-         } else {
-            if (q.v[1] < q.v[2]) {
-               // BABA -> ljki
-               itmp = q.v[0];
-               q.v[0] = q.v[3];
-               q.v[3] = itmp;
-               pids[0] = IDX(na, j, l);
-               pids[1] = IDX(na, k, l);
-               pids[2] = IDX(na, i, l);
-               pids[3] = IDX(na, j, k);
-               pids[4] = IDX(na, i, j);
-               pids[5] = IDX(na, i, k);
-            } else {
-               // ABAB -> ikjl
-               itmp = q.v[1];
-               q.v[1] = q.v[2];
-               q.v[2] = itmp;
-               pids[0] = IDX(na, i, k);
-               pids[1] = IDX(na, i, j);
-               pids[2] = IDX(na, i, l);
-               pids[3] = IDX(na, j, k);
-               pids[4] = IDX(na, k, l);
-               pids[5] = IDX(na, j, l);
-            }
-         }
-      }
-   }
-}
-
-int GetSubType(Triplet& t) {
-   if (t.v[0] == t.v[1]) {
-      if (t.v[1] == t.v[2]) {
-         return 0;
-      }
-   }
-   return 1;
-}
-
-int GetSubType(Quadruplet& q) {
-   int i, comp, count;
-   comp = q.v[0];
-   for (i = 1, count = 1; i < 4; i++) {
-      if (q.v[i] == comp) count++;
-   }
-   if (count == 2) return 2;
-   if (count == 4) return 0;
-   return 1;
-}
 
 void RunTasks() {
    int i, j, k, l, nstr, na, n, nt1, nt2, nt4, tp, m, ndesc, ndesc_sketch, ndesc20, ndesc21, ndesc22, ndesc4, ndesc40, ndesc41, nsub, ntrain,
-       nt3, na3, o, ndesc2, na4, ii, jj, kk, ndesc3, ndesc30, ndesc31, ndesc32, ndesc33, ndesc42, ndesc43, ndesc44, max_case_count, nr, nc;
+       nt3, na3, o, ndesc2, na4, ii, jj, kk, ndesc3, ndesc30, ndesc31, ndesc32, ndesc33, ndesc42, ndesc43, ndesc44, max_case_count, nr, nc, np;
    int *types2, *ngp, *types3, *stypes3, *ids_train, *types4, *stypes4;
    double avg, x;
-   double *Y, *v, *dmin, *dmax, *rcoords, *stdevs, *avgs, *wmatc, *Yc;
+   double *Y, *v, *dmin, *dmax, *rcoords, *stdevs, *avgs, *wmatc, *Yc, *stdevs_to_save, *avgs_to_save;
    int pids[6] = {};
    int n_train3B[4] = {};
    int n_train4B[5] = {};
@@ -231,6 +40,20 @@ void RunTasks() {
    int *ids_selected[12] = {};
    int *vars_selected[12] = {};
    double *levs[12] = {};
+   const char *blocks[12] = {
+      "g20",
+      "g21",
+      "g22",
+      "g30",
+      "g31",
+      "g32",
+      "g33",
+      "g40",
+      "g41",
+      "g42",
+      "g43",
+      "g44"
+   };
    Pair p;
    Triplet t;
    Quadruplet q;
@@ -253,6 +76,9 @@ void RunTasks() {
    set<int>::iterator itp;
    vector<int> ivec;
    ofstream ofile;
+   ifstream ifile;
+   istringstream isstream;
+   string line;
    int prec = numeric_limits<double>::max_digits10;
    streamsize oldprec = cout.precision();
    string s = g_params.molFile;
@@ -395,7 +221,7 @@ void RunTasks() {
    }
    ngp = new int[nt2];
    tkns = Tokenize(g_params.ngp, "\r\n");
-   stdevs = avgs = wmatc = Yc = 0;
+   stdevs = avgs = stdevs_to_save = avgs_to_save = wmatc = Yc = 0;
    ids_train = 0;
    if (tkns.size() != nt2) {
       cerr << "Input error reading NUMBER_OF_GRID_POINTS" << endl;
@@ -507,6 +333,8 @@ void RunTasks() {
    ndesc = descs.GetNDescriptors();
    stdevs = new double[ndesc];
    avgs = new double[ndesc];
+   stdevs_to_save = new double[ndesc];
+   avgs_to_save = new double[ndesc];
    for (i=0; i < 12; i++) ids_selected[i] = new int[nstr];
    for (i=0; i < 12; i++) levs[i] = new double[nstr];
    // wmatc = new double[nstr*ndesc];
@@ -637,19 +465,48 @@ void RunTasks() {
             for (j = 0; j < ranks[i]; j++) vars_selected[i][j] = -1;
          }
          sketch_matrices(nstr, ndescs, nsub, "descs.bin", ids_selected, ranks, g_params.nsketch, g_params.nthreads, vars_selected);
-         for (i = 0; i < nsub; i++) {
-            if (vars_selected[i][0] == -1)
+         for (i = 0, l = 0, m = 0; i < nsub; i++) {
+            if (vars_selected[i][0] == -1) {
                ndescs_sketch[i] = ndescs[i];
-            else
+               copy_file((string(blocks[i]) + ".txt").c_str(), (string(blocks[i]) + "f.txt").c_str());
+               for (j = 0; j < ndescs_sketch[i]; j++) {
+                  avgs_to_save[l] = avgs[m];
+                  stdevs_to_save[l++] = stdevs[m++];
+               }
+            } else {
                ndescs_sketch[i] = ranks[i];
+               ifile.open((string(blocks[i]) + ".txt").c_str(), ios::in);
+               ofile.open((string(blocks[i]) + "f.txt").c_str(), ios::out);
+               getline(ifile, line, '\n');
+               isstream.str(line);
+               isstream >> np;
+               isstream.clear();
+               ofile << ndescs_sketch[i] << endl;
+               for (j = 0, k = 0; j < np; j++) {
+                  getline(ifile, line, '\n');
+                  if (k < ndescs_sketch[i] && j == vars_selected[i][k]) {
+                     ofile << line << endl;
+                     k++;
+                     avgs_to_save[l] = avgs[m];
+                     stdevs_to_save[l++] = stdevs[m++];
+                  } else {
+                     m++;
+                  }
+               }
+               ifile.close();
+               ofile.close();
+            }
          }
          for (i=0, ndesc_sketch=0; i < nsub; i++) {
             ndesc_sketch += ndescs_sketch[i];
          }
+         if (l != ndesc_sketch) cerr << "Internal error l != ndesc_sketch" << endl;
+         Matrix2File(avgs_to_save, ndesc_sketch, 1, "avgsf.bin");
+         Matrix2File(stdevs_to_save, ndesc_sketch, 1, "stdevsf.bin");
          ofile.open("descs_sketch.bin", ios::out | ios::binary);
          ofile.write((char*)&nstr, sizeof(int));
          ofile.write((char*)&ndesc_sketch, sizeof(int));
-         ifstream ifile("descs.bin", ios::in | ios::binary);
+         ifile.open("descs.bin", ios::in | ios::binary);
          ifile.read((char*)&nr, sizeof(int));
          ifile.read((char*)&nc, sizeof(int));
          for (i = 0; i < nstr; i++) {
@@ -699,8 +556,9 @@ void RunTasks() {
       if (nsub > 3) {
          build_regression(nstr, ndescs, ndesc, 3, 4, "descs_sketch.bin", Yc, ids_selected, 100, g_params.rbs_3b, ntrain, ids_train);
          if (nsub > 7)
-            build_regression(nstr, ndescs, ndesc, 7, 5, "descs_sketch.bin", Yc, ids_selected, 100, g_params.rbs_4b, ntrain, ids_train);
+            build_regression(nstr, ndescs, ndesc, 7, 5, "descs_sketch.bin", Yc, ids_selected, 100, g_params.rbs_4b, ntrain, ids_train, true);
       }
+      cout << "Dependent variable average: " << setprecision(prec) << avg << setprecision(oldprec) << endl;
    }
 end:
    delete [] ids_train;
@@ -710,6 +568,8 @@ end:
       delete [] vars_selected[i];
       delete [] ids_selected[i];
    }
+   delete [] avgs_to_save;
+   delete [] stdevs_to_save;
    delete [] avgs;
    delete [] stdevs;
    delete [] ngp;

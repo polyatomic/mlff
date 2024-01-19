@@ -1039,11 +1039,11 @@ bool calculate_linear_regression(int N, int M, double *wmatc, int *ids, int nt, 
    return true;
 }
 
-bool calculate_linear_regression(int N, int M, int Mtot, const char *wmatc_name, int *ids, int nt, double *Yc, double& rmse_train, double& rmse_test, double& rmse_total, double& mae_train, double& mae_test, double& mae_total, int& ndim, bool calculate_test_stats, bool print_data) {
+bool calculate_linear_regression(int N, int M, int Mtot, const char *wmatc_name, int *ids, int nt, double *Yc, double& rmse_train, double& rmse_test, double& rmse_total, double& mae_train, double& mae_test, double& mae_total, int& ndim, bool calculate_test_stats, bool verbose, bool save_coeffs) {
    int i, j, k, nr, nc, mtmm;
    double rss1, rs1, tmp, rs2, rss2, rss, rs;
    double *wmatt, *b, *y, *dp, *dpv;
-   if (print_data) {
+   if (verbose) {
       cout << "#####   Starting calculate_linear_regression   #####\n";
       cout << "Number of rows: " << N << endl;
       cout << "Number of basis functions: " << M << endl;
@@ -1085,7 +1085,7 @@ bool calculate_linear_regression(int N, int M, int Mtot, const char *wmatc_name,
    mae_test = 0.0;
    rmse_total = 0.0;
    mae_total = 0.0;
-   if (print_data) {
+   if (verbose) {
       cout << "RMSE(train) = " << rmse_train << endl;
       cout << "MAE(train) = " << mae_train << endl;
    }
@@ -1104,7 +1104,7 @@ bool calculate_linear_regression(int N, int M, int Mtot, const char *wmatc_name,
    }
    rmse_test = sqrt(rss2/(N-nt));
    mae_test = rs2/(N-nt);
-   if (print_data) {
+   if (verbose) {
       cout << "RMSE(test) = " << rmse_test << endl;
       cout << "MAE(test) = " << mae_test << endl;
    }
@@ -1112,13 +1112,16 @@ bool calculate_linear_regression(int N, int M, int Mtot, const char *wmatc_name,
    rs = rs1 + rs2;
    rmse_total = sqrt(rss/N);
    mae_total = rs/N;
-   if (print_data) {
+   if (verbose) {
       cout << "RMSE(total) = " << rmse_total << endl;
       cout << "MAE(total) = " << mae_total << endl;
    }
 end:
-   if (print_data)
+   if (verbose)
       cout << "#####   Finished calculate_linear_regression   #####\n";
+   if (save_coeffs) {
+      Matrix2File(b, M, 1, "coeffs.bin");
+   }
    ifile.close();
    delete [] dpv;
    delete [] y;
@@ -1127,7 +1130,7 @@ end:
    return true;
 }
 
-bool build_regression(int N, int M[], int Mtot, int substart, int nsub, const char *wmatc_name, double *Yc, int *ids_selected[], int n_incr, int n_steps, int &n_training, int *ids_training) {
+bool build_regression(int N, int M[], int Mtot, int substart, int nsub, const char *wmatc_name, double *Yc, int *ids_selected[], int n_incr, int n_steps, int &n_training, int *ids_training, bool save_coeffs) {
    int i, ii, j, k, mtot, maxcases, n_selected_current, best_sub, ndiff, n_size, best_n_size, best_k, best_ndim;
    int *itmp, *ids_selectedo, *ids_selected_current, *ids_to_add, *idit, *ids_selected_currentc;
    int *ids_selectedos[5] = {};
@@ -1226,7 +1229,7 @@ bool build_regression(int N, int M[], int Mtot, int substart, int nsub, const ch
          for (i=0; i < n_selected_current; i++) ids_training[i] = ids_selected_current[i];
       }
    }
-   calculate_linear_regression(N, mtot, Mtot, wmatc_name, ids_training, n_training, Yc, rmse_trains[0], rmse_tests[0], rmse_totals[0], mae_trains[0], mae_tests[0], mae_totals[0], ndims[0], true, false);
+   calculate_linear_regression(N, mtot, Mtot, wmatc_name, ids_training, n_training, Yc, rmse_trains[0], rmse_tests[0], rmse_totals[0], mae_trains[0], mae_tests[0], mae_totals[0], ndims[0], true, false, save_coeffs);
    cout << "Best iteration: " << best_k << endl;
    cout << "rmse(train): " << rmse_trains[0] << endl;
    cout << "mae(train): " << mae_trains[0] << endl;

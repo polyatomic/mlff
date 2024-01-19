@@ -21,7 +21,7 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{1d13d440-930e-47b3-b53e-66ddce116fb6}</ProjectGuid>
+    <ProjectGuid>{7c4f436f-caec-4fad-93eb-c569679ead9a}</ProjectGuid>
     <RootNamespace>bokfit</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
@@ -148,12 +148,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\chemlib\Atom.cpp" />
+    <ClCompile Include="..\chemlib\chemutil.cpp" />
+    <ClCompile Include="..\chemlib\Descriptors.cpp" />
     <ClCompile Include="..\chemlib\Mol.cpp" />
     <ClCompile Include="..\chemlib\parsers.cpp" />
     <ClCompile Include="..\mathlib\mathutil.cpp" />
     <ClCompile Include="..\util\ThreadPool.cpp" />
     <ClCompile Include="..\util\util.cpp" />
-    <ClCompile Include="Descriptors.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="RunTasks.cpp" />
     <ClCompile Include="tasks.cpp" />
@@ -161,12 +162,13 @@
   <ItemGroup>
     <ClInclude Include="..\chemlib\Atom.h" />
     <ClInclude Include="..\chemlib\chemutil.h" />
+    <ClInclude Include="..\chemlib\Descriptors.h" />
     <ClInclude Include="..\chemlib\Mol.h" />
     <ClInclude Include="..\mathlib\mathutil.h" />
+    <ClInclude Include="..\util\functor.h" />
     <ClInclude Include="..\util\Iterator.h" />
     <ClInclude Include="..\util\ThreadPool.h" />
     <ClInclude Include="..\util\util.h" />
-    <ClInclude Include="Descriptors.h" />
     <ClInclude Include="RunTasks.h" />
     <ClInclude Include="tasks.h" />
   </ItemGroup>

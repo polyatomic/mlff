@@ -3,7 +3,8 @@
 * [mathlib](mathlib): utility library of mathematical algorithms.
 * [chemlib](chemlib): cheminformatics utility library.
 * [util](util): general utility library.
-* [bokfit](bokfit): tool for body-ordered kernel machine learning force field development.
+* [bokfit](bokfit): tool for body-ordered kernel machine learning force field training.
+* [bokpredict](bokpredict): tool for prediction.
 * [examples](examples): example data for model development.
 
 ## General idea
@@ -23,7 +24,7 @@ Intel oneAPI 2021 (for LAPACK). Other LAPACK implementations may be used as well
 
 ## Example usage
 
-Force field can be generated from the file [benzene.xyz](http://www.quantum-machine.org/gdml/data/xyz/md17_benzene2017.zip) and example input files in [examples](examples) by using the following steps:
+Force field can be generated from the file [benzene.xyz](http://www.quantum-machine.org/gdml/data/xyz/md17_benzene2017.zip) and example input files in [examples/training](examples/training) by using the following steps:
 
 1) Preliminary selection of grid points based on the closeness to training data points.  
 `bokfit -p p1.txt > res1.log`
@@ -42,4 +43,10 @@ Force field can be generated from the file [benzene.xyz](http://www.quantum-mach
 
 Steps 1-4 are performed in unsupervised manner, i.e. they don't use any energy data and are used for the generation of sufficiently diverse training set.
 Training energies in `e.txt` are given in meV. The model is trained with 21292 selected geometries and the mean absolute error for the whole geometry set of size 627983 will
-be around 1 meV (see `res5.log`).
+be around 1 meV (see `res5.log`). Only 745 grid points (kernel function centers) from different many-body terms are used for prediction which is far less than the size of the
+training set.
+Trained force field data files are given in [examples/prediction](examples/prediction) and prediction for the geometries in `benzene.xyz` can be run as:
+
+`bokpredict -p predict.txt > res.log`
+
+The resulting file `res.log` contains predicted energy values and predicted-observed comparison statistics.

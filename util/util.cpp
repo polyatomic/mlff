@@ -87,3 +87,9 @@ void File2Matrix(const char *fn, int& nrows, int& ncols, double *X) {
    for (i = 0; i < nrows*ncols; i++) ifile.read((char*)&X[i], sizeof(double));
    ifile.close();
 }
+
+void copy_file(const char *srce_file, const char *dest_file) {
+   ifstream srce(srce_file, ios::binary);
+   ofstream dest(dest_file, ios::binary);
+   dest << srce.rdbuf();
+}
