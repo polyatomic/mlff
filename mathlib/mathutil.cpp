@@ -17,6 +17,16 @@ static const double g_2_over_7 = 2.0/7.0;
 static const double g_1_over_28 = 1.0/28.0;
 static const double g_28_over_55 = 28.0/55.0;
 
+void order_pair(double &x1, double &x2, double &lx, double &hx) {
+   if (x1 < x2) {
+      lx = x1;
+      hx = x2;
+   } else {
+      lx = x2;
+      hx = x1;
+   }
+}
+
 double sq_dist(const double *v1, const double *v2, int n) {
    int i;
    double tmp, sum;
@@ -30,13 +40,7 @@ double sq_dist(const double *v1, const double *v2, int n) {
 
 double rp_3_6_kernel(double x1, double x2) {
    double xl, xs, t1, t2;
-   if (x1 < x2) {
-      xs = x1;
-      xl = x2;
-   } else {
-      xs = x2;
-      xl = x1;
-   }
+   order_pair(x1, x2, xs, xl);
    t1 = xl*xl*xl;
    t1 = t1*t1;
    t1 = t1*xl;
@@ -47,13 +51,7 @@ double rp_3_6_kernel(double x1, double x2) {
 
 double rp_3_5_kernel(double x1, double x2) {
    double xl, xs, t1, t2;
-   if (x1 < x2) {
-      xs = x1;
-      xl = x2;
-   } else {
-      xs = x2;
-      xl = x1;
-   }
+   order_pair(x1, x2, xs, xl);
    t1 = xl*xl;
    t1 = t1*t1*t1;
    t1 = 1.0/t1;
@@ -63,13 +61,7 @@ double rp_3_5_kernel(double x1, double x2) {
 
 double rp_3_4_kernel(double x1, double x2) {
    double xl, xs, t1, t2;
-   if (x1 < x2) {
-      xs = x1;
-      xl = x2;
-   } else {
-      xs = x2;
-      xl = x1;
-   }
+   order_pair(x1, x2, xs, xl);
    t1 = xl*xl;
    t1 = t1*t1*xl;
    t1 = 1.0/t1;
@@ -79,13 +71,7 @@ double rp_3_4_kernel(double x1, double x2) {
 
 double rp_3_3_kernel(double x1, double x2) {
    double xl, xs, t1, t2;
-   if (x1 < x2) {
-      xs = x1;
-      xl = x2;
-   } else {
-      xs = x2;
-      xl = x1;
-   }
+   order_pair(x1, x2, xs, xl);
    t1 = xl*xl;
    t1 = t1*t1;
    t1 = 1.0/t1;
@@ -95,13 +81,7 @@ double rp_3_3_kernel(double x1, double x2) {
 
 double rp_3_2_kernel(double x1, double x2) {
    double xl, xs, t1, t2;
-   if (x1 < x2) {
-      xs = x1;
-      xl = x2;
-   } else {
-      xs = x2;
-      xl = x1;
-   }
+   order_pair(x1, x2, xs, xl);
    t1 = xl*xl*xl;
    t1 = 1.0/t1;
    t2 = xs/xl;
@@ -110,13 +90,7 @@ double rp_3_2_kernel(double x1, double x2) {
 
 double rp_3_1_kernel(double x1, double x2) {
    double xl, xs, t1, t2;
-   if (x1 < x2) {
-      xs = x1;
-      xl = x2;
-   } else {
-      xs = x2;
-      xl = x1;
-   }
+   order_pair(x1, x2, xs, xl);
    t1 = xl*xl;
    t1 = 1.0/t1;
    t2 = xs/xl;
@@ -125,13 +99,7 @@ double rp_3_1_kernel(double x1, double x2) {
 
 double rp_3_0_kernel(double x1, double x2) {
    double xl, xs, t1, t2;
-   if (x1 < x2) {
-      xs = x1;
-      xl = x2;
-   } else {
-      xs = x2;
-      xl = x1;
-   }
+   order_pair(x1, x2, xs, xl);
    t1 = 1.0/xl;
    t2 = xs/xl;
    return 3.0*t1*(1.0 - t2*(0.5 - 0.1*t2));

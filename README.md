@@ -20,7 +20,7 @@ Intel oneAPI 2021 (for LAPACK). Other LAPACK implementations may be used as well
 ## Compile instructions
 
 1. Open solution file `bokfit.sln` with Visual Studio 2019 or newer.
-1. Build (Ctrl-B). This is going to produce `bokfit` executable in the subdirectory of x64.
+1. Build (Ctrl-B). This is going to produce `bokfit` and `bokpredict` executables in the subdirectories of x64.
 
 ## Example usage
 

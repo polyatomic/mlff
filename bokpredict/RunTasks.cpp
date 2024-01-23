@@ -1,5 +1,6 @@
 #include <iostream>
 #include <iomanip>
+#include <thread>
 
 #include "chemutil.h"
 #include "RunTasks.h"
@@ -17,13 +18,31 @@ using std::endl;
 using std::setprecision;
 using std::numeric_limits;
 using std::streamsize;
+using std::thread;
+
+void calculate_descriptors_for_rows(int n, int ndesc, double *v, double *B, double *avgs, double avg, double *stdevs, FunctorDaDaI* dcalc, double *dval, double *Yp, int istart, int iend, int batch) {
+   int i, j;
+   double sum;
+   double *r;
+   for (i = istart; i < iend; i++) {
+      r = v + i*n;
+      calculate_descriptors(n, r, dcalc, dval, batch);
+      for (sum = 0.0, j = 0; j < ndesc; j++) {
+         dval[j] = (dval[j] - avgs[j])/stdevs[j];
+         sum += dval[j]*B[j];
+      }
+      Yp[i] = sum + avg;
+   }
+}
 
 void RunTasks() {
-   int i, j, k, l, o, nstr, na, na3, n, nt1, nt2, nt3, m, tp, nt4, na4, ii, jj, kk, ndesc, nr, nc;
-   double *v, *dmin, *dmax, *B, *stdevs, *avgs, *r, *dval, *Y;
-   int *types2, *types3, *stypes3, *types4, *stypes4, *ngp;
-   double sum, avg, res, rss, dif, rss2;
+   int i, j, k, l, o, nstr, na, na3, n, nt1, nt2, nt3, m, tp, nt4, na4, ii, jj, kk, ndesc, nr, nc, istart, iend, nthreads, tc;
+   double *v, *dmin, *dmax, *B, *stdevs, *avgs, *Y, *Yp;
+   double *dvals[MAX_THREADS];
+   int *types2, *types3, *stypes3, *types4, *stypes4, *ngp, *tsizes;
+   double avg, rss, dif, rss2;
    int pids[6] = {};
+   thread threads[MAX_THREADS];
    Iterator<Mol> mols;
    vector<string> tkns, tkns2;
    vector<int> t1;
@@ -36,7 +55,9 @@ void RunTasks() {
    vector<Pair>::iterator t2pos;
    vector<Triplet>::iterator t3pos;
    vector<Quadruplet>::iterator t4pos;
-   stdevs = avgs = B = dval = Y = 0;
+   stdevs = avgs = B = Y = Yp = 0;
+   tsizes = 0;
+   nthreads = 0;
    int prec = numeric_limits<double>::max_digits10;
    streamsize oldprec = cout.precision();
    string s = g_params.molFile;
@@ -207,9 +228,9 @@ void RunTasks() {
    File2Matrix("avgs.bin", nr, nc, avgs);
    File2Matrix("stdevs.bin", nr, nc, stdevs);
    avg = g_params.bias;
-   dval = new double[ndesc];
    s = g_params.eFile;
    Y = new double[nstr];
+   Yp = new double[nstr];
    if (s.size() > 0) {
       if (!File2Array(s, Y)) {
          cerr << "Error reading " << s << endl;
@@ -219,24 +240,33 @@ void RunTasks() {
       cerr << "Input error" << endl;
       goto end;
    }
-   for (i = 0, rss = 0.0, rss2 = 0.0; i < nstr; i++) {
-      r = v + i*n;
-      calculate_descriptors(n, r, &dcalc, dval);
-      for (sum=0.0,j=0; j < ndesc; j++) {
-         dval[j] = (dval[j] - avgs[j])/stdevs[j];
-         sum += dval[j]*B[j];
-      }
-      res = sum + avg;
-      cout << res << endl;
-      dif = Y[i] - res;
+   nthreads = g_params.nthreads;
+   cout << "Using " << nthreads << " threads" << endl;
+   tsizes = new int[nthreads];
+   for (i=0; i < nthreads; i++) dvals[i] = new double[ndesc];
+   divide(tsizes, nstr, nthreads);
+   istart = 0;
+   iend = tsizes[0];
+   for (tc = 0; tc < nthreads; tc++) {
+      threads[tc] = thread(calculate_descriptors_for_rows, n, ndesc, v, B, avgs, avg, stdevs, &dcalc, dvals[tc], Yp, istart, iend, tc);
+      istart = iend;
+      if (tc < nthreads-1) iend = istart + tsizes[tc+1];
+   }
+   for (tc = 0; tc < nthreads; tc++)
+      threads[tc].join();
+   for (i=0, rss=0.0, rss2=0.0; i < nstr; i++) {
+      cout << Yp[i] << endl;
+      dif = Y[i] - Yp[i];
       rss += dif*dif;
       rss2 += fabs(dif);
    }
    cout << "rmse: " << sqrt(rss/nstr) << endl;
    cout << "mae: " << rss2/nstr << endl;
 end:
+   for (i = 0; i < nthreads; i++) delete [] dvals[i];
+   delete [] tsizes;
+   delete [] Yp;
    delete [] Y;
-   delete [] dval;
    delete [] avgs;
    delete [] stdevs;
    delete [] B;

@@ -37,14 +37,6 @@ void find_slot_and_pos(int n_slots, int slot_sums[], int id, int& slot, int& pos
       pos = id;
 }
 
-void divide(int *tsizes, int total, int nthreads) {
-   int i, rem, ts;
-   ts = total/nthreads;
-   rem = total%nthreads;
-   for (i=0; i < rem; i++) tsizes[i] = ts+1;
-   for (i=rem; i < nthreads; i++) tsizes[i] = ts;
-}
-
 void runFunctorDaDaI(int ivars[], double *dvars[], FunctorDaDaI *dcalc) {
    int j;
    double *rcoords, *wp;
