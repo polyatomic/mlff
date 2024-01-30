@@ -21,7 +21,7 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{7c4f436f-caec-4fad-93eb-c569679ead9a}</ProjectGuid>
+    <ProjectGuid>{20530b72-133a-4d6c-bdcb-d4a660686576}</ProjectGuid>
     <RootNamespace>bokfit</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>

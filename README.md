@@ -15,12 +15,18 @@ centers independently for different many-body terms.
 
 ## Prerequisites
 
-Intel oneAPI 2021 (for LAPACK). Other LAPACK implementations may be used as well but have not been tested.
+* Intel oneAPI 2021 for LAPACK. Other LAPACK implementations may be used as well but have not been tested.
+* Python 3.9 or newer for Python wrappers (currently in early development stage).
 
 ## Compile instructions
 
 1. Open solution file `bokfit.sln` with Visual Studio 2019 or newer.
-1. Build (Ctrl-B). This is going to produce `bokfit` and `bokpredict` executables in the subdirectories of x64.
+1. Build the projects (Ctrl-B). This is going to produce `bokfit` and `bokpredict` executables in the subdirectories of x64.
+To install chemutil module for Python, modify lists `sfc_include_dirs` and `sfc_libraries` in `setup.py` if
+needed to point to correct locations of oneAPI headers and libraries in your system. Module can then be installed
+with the command:
+
+`pip install <path name of folder containing pyproject.toml>`
 
 ## Example usage
 
