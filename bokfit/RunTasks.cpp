@@ -1,16 +1,11 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
-#include <algorithm>
 
-#include "chemutil.h"
 #include "RunTasks.h"
-#include "util.h"
-#include "Descriptors.h"
 #include "tasks.h"
-#include "mathutil.h"
 
-extern PType g_params;
+extern PTypeExtended g_params;
 
 using std::cerr;
 using std::cout;
@@ -18,22 +13,17 @@ using std::endl;
 using std::numeric_limits;
 using std::streamsize;
 using std::setprecision;
-using std::set_difference;
-using std::sort;
 using std::ofstream;
 using std::ifstream;
 using std::istringstream;
 using std::ios;
 
 void RunTasks() {
-   int i, j, k, l, nstr, na, n, nt1, nt2, nt4, tp, m, ndesc, ndesc_sketch, ndesc20, ndesc21, ndesc22, ndesc4, ndesc40, ndesc41, nsub, ntrain,
-       nt3, na3, o, ndesc2, na4, ii, jj, kk, ndesc3, ndesc30, ndesc31, ndesc32, ndesc33, ndesc42, ndesc43, ndesc44, max_case_count, nr, nc, np;
-   int *types2, *ngp, *types3, *stypes3, *ids_train, *types4, *stypes4;
+   int i, j, k, l, nstr, n, m, ndesc, ndesc_sketch, ndesc20, ndesc21, ndesc22, ndesc4, ndesc40, ndesc41, nsub, ntrain,
+       ndesc2, kk, ndesc3, ndesc30, ndesc31, ndesc32, ndesc33, ndesc42, ndesc43, ndesc44, max_case_count, nr, nc, np;
+   int *ids_train;
    double avg, x;
-   double *Y, *v, *dmin, *dmax, *rcoords, *stdevs, *avgs, *wmatc, *Yc, *stdevs_to_save, *avgs_to_save;
-   int pids[6] = {};
-   int n_train3B[4] = {};
-   int n_train4B[5] = {};
+   double *Y, *v, *rcoords, *stdevs, *avgs, *wmatc, *Yc, *stdevs_to_save, *avgs_to_save;
    int ndescs[12] = {};
    int ndescs_sketch[12] = {};
    int ranks[12] = {};
@@ -54,18 +44,8 @@ void RunTasks() {
       "g43",
       "g44"
    };
-   Pair p;
-   Triplet t;
-   Quadruplet q;
-   vector<int> t1;
-   vector<Pair> t2;
-   vector<Triplet> t3;
-   vector<Quadruplet> t4;
    Iterator<Mol> mols;
-   vector<string> tkns, tkns2;
-   vector<Pair>::iterator t2pos;
-   vector<Triplet>::iterator t3pos;
-   vector<Quadruplet>::iterator t4pos;
+   Descriptors descs;
    set<int> pss[3];
    set<Triplet, TripletCompare> tss[4];
    set<Triplet, TripletCompare> tss_ref[4];
@@ -79,171 +59,12 @@ void RunTasks() {
    ifstream ifile;
    istringstream isstream;
    string line;
+   Y = v = wmatc = Yc = stdevs = avgs = stdevs_to_save = avgs_to_save = 0;
+   ids_train = 0;
    int prec = numeric_limits<double>::max_digits10;
    streamsize oldprec = cout.precision();
-   string s = g_params.molFile;
-   mols = ReadXYZFile(s.c_str());
-   if (!mols) {
-      cerr << "Error opening " << s << endl;
-      return;
-   }
-   nstr = mols.Size();
-   cout << "Number of training configurations = " << nstr << endl;
-   na = mols[0].NAtoms();
-   cout << "Number of atoms in configuration = " << na << endl;
-   s = g_params.eFile;
-   Y = new double[nstr];
-   if (s.size() > 0) {
-      if (!File2Array(s, Y)) {
-         cerr << "Error reading " << s << endl;
-         delete [] Y;
-         return;
-      }
-   } else {
-      cerr << "Input error" << endl;
-      delete [] Y;
-      return;
-   }
-   n = 3*na;
-   j = nstr*n;
-   v = new double[j];
-   for (i=0; i < nstr; i++) mols[i].GetCoordinates(v + i*n);
-   mols.Resize(1);
-   Descriptors descs;
    TFunctorDaDaI<Descriptors> dcalc;
-   tkns = Tokenize(g_params.t1, "\r\n");
-   nt1 = tkns.size();
-   cout << "Number of atom types = " << nt1 << endl;
-   cout << "Atom types:" << endl;
-   for (i = 0; i < nt1; i++) {
-      j = atoi(tkns[i].c_str());
-      t1.push_back(j);
-      cout << Atom::GetAtomicSymbol(j) << endl;
-   }
-   tkns = Tokenize(g_params.t2, "\r\n");
-   nt2 = tkns.size();
-   cout << "Number of atom type pairs = " << nt2 << endl;
-   for (i = 0; i < nt2; i++) {
-      tkns2 = Tokenize(tkns[i], " ");
-      j = atoi(tkns2[0].c_str());
-      p.v[0] = j;
-      j = atoi(tkns2[1].c_str());
-      p.v[1] = j;
-      t2.push_back(p);
-   }
-   dmin = new double[nt2];
-   dmax = new double[nt2];
-   types2 = new int[na*(na-1)/2];
-   for (i = 0, m = 0; i < na-1; i++) {
-      k = mols[0].GetAtomicNumber(i);
-      for (j = i+1; j < na; j++) {
-         p.v[0] = k;
-         p.v[1] = mols[0].GetAtomicNumber(j);
-         if (p.v[0] > p.v[1]) { l = p.v[0]; p.v[0] = p.v[1]; p.v[1] = l; }
-         t2pos = lower_bound(t2.begin(), t2.end(), p, PairCompare());
-         tp = t2pos - t2.begin();
-         types2[m++] = tp;
-      }
-   }
-   tkns = Tokenize(g_params.t3, "\r\n");
-   nt3 = tkns.size();
-   cout << "Number of atom type triplets = " << nt3 << endl;
-   for (i = 0; i < nt3; i++) {
-      tkns2 = Tokenize(tkns[i], " ");
-      j = atoi(tkns2[0].c_str());
-      t.v[0] = j;
-      j = atoi(tkns2[1].c_str());
-      t.v[1] = j;
-      j = atoi(tkns2[2].c_str());
-      t.v[2] = j;
-      t3.push_back(t);
-   }
-   na3 = na*(na-1)*(na-2)/6;
-   types3 = new int[4*na3];
-   stypes3 = new int[nt3];
-   for (i=0; i < nt3; i++) stypes3[i] = GetSubType(t3[i]);
-   for (i = 0,o = 0; i < na-2; i++) {
-      l = mols[0].GetAtomicNumber(i);
-      for (j = i+1; j < na-1; j++) {
-         m = mols[0].GetAtomicNumber(j);
-         for (k = j+1; k < na; k++) {
-            t.v[0] = l;
-            t.v[1] = m;
-            t.v[2] = mols[0].GetAtomicNumber(k);
-            analyze_triplet(t, na, i, j, k, pids);
-            t3pos = find(t3.begin(), t3.end(), t);
-            tp = t3pos - t3.begin();
-            types3[o] = tp;
-            types3[na3+3*o] = pids[0]; types3[na3+3*o+1] = pids[1]; types3[na3+3*o+2] = pids[2];
-            o++;
-         }
-      }
-   }
-   tkns = Tokenize(g_params.t4, "\r\n");
-   nt4 = tkns.size();
-   cout << "Number of atom type quadruplets = " << nt4 << endl;
-   for (i = 0; i < nt4; i++) {
-      tkns2 = Tokenize(tkns[i], " ");
-      j = atoi(tkns2[0].c_str());
-      q.v[0] = j;
-      j = atoi(tkns2[1].c_str());
-      q.v[1] = j;
-      j = atoi(tkns2[2].c_str());
-      q.v[2] = j;
-      j = atoi(tkns2[3].c_str());
-      q.v[3] = j;
-      t4.push_back(q);
-   }
-   na4 = na*(na-1)*(na-2)*(na-3)/24;
-   types4 = new int[7*na4];
-   stypes4 = new int[nt4];
-   for (i=0; i < nt4; i++) stypes4[i] = GetSubType(t4[i]);
-   for (i=0,o=0; i < na-3; i++) {
-      ii = mols[0].GetAtomicNumber(i);
-      for (j=i+1; j < na-2; j++) {
-         jj = mols[0].GetAtomicNumber(j);
-         for (k=j+1; k < na-1; k++) {
-            kk = mols[0].GetAtomicNumber(k);
-            for (l=k+1; l < na; l++) {
-               q.v[0] = ii;
-               q.v[1] = jj;
-               q.v[2] = kk;
-               q.v[3] = mols[0].GetAtomicNumber(l);
-               analyze_quadruplet(q, na, i, j, k, l, pids);
-               t4pos = find(t4.begin(), t4.end(), q);
-               tp = t4pos - t4.begin();
-               types4[o] = tp;
-               types4[na4+6*o] = pids[0]; types4[na4+6*o+1] = pids[1]; types4[na4+6*o+2] = pids[2]; types4[na4+6*o+3] = pids[3]; types4[na4+6*o+4] = pids[4]; types4[na4+6*o+5] = pids[5];
-               o++;
-            }
-         }
-      }
-   }
-   ngp = new int[nt2];
-   tkns = Tokenize(g_params.ngp, "\r\n");
-   stdevs = avgs = stdevs_to_save = avgs_to_save = wmatc = Yc = 0;
-   ids_train = 0;
-   if (tkns.size() != nt2) {
-      cerr << "Input error reading NUMBER_OF_GRID_POINTS" << endl;
-      goto end;
-   }
-   for (i = 0; i < nt2; i++)
-      ngp[i] = atoi(tkns[i].c_str());
-   descs.Init(na, nt2, types2, nt3, stypes3, types3, nt4, stypes4, types4, ngp, g_params.nthreads);
-   if (g_params.dist.size() == 0) {
-      for (i = 0; i < nt2; i++) {
-         dmin[i] = 1000.0;
-         dmax[i] = 0.0;
-      }
-      for (i = 0; i < nstr; i++) {
-         rcoords = v + i*n;
-         descs.GetDistanceRanges(rcoords, dmin, dmax);
-      }
-   }
-   cout << "Atom type pairs, minimum and maximum distances, max-min and number of grid points:" << endl;
-   for (i = 0; i < nt2; i++)
-      cout << Atom::GetAtomicSymbol(t2[i].v[0]) << " " << Atom::GetAtomicSymbol(t2[i].v[1]) << " " << setprecision(prec) << dmin[i] << " " << dmax[i] << " " << setprecision(oldprec) << dmax[i] - dmin[i] << " " << ngp[i] << endl;
-   descs.SetGrid(dmin, dmax);
+   if (!calculation_prepare(&g_params, mols, descs, nstr, n, v, Y)) goto end;
    if (g_params.preselect_descriptors) {
       for (i = 0; i < nstr; i++) {
          rcoords = v + i*n;
@@ -327,9 +148,6 @@ void RunTasks() {
       ivec.clear();
       goto end;
    }
-   Descriptors::SetKernel2B(g_params.kernel_2b);
-   Descriptors::SetKernel3B(g_params.kernel_3b);
-   Descriptors::SetKernel4B(g_params.kernel_4b);
    ndesc = descs.GetNDescriptors();
    stdevs = new double[ndesc];
    avgs = new double[ndesc];
@@ -407,58 +225,18 @@ void RunTasks() {
    if (!g_params.build_regression) {
       if (g_params.order_by_leverages) {
          order_by_leverages(nstr, ndescs, nsub, "descs.bin", "descst.bin", ids_selected, levs, ranks, g_params.maxrows, g_params.nthreads);
-         ofile.open("g20s.txt");
-         for (i = 0; i < nstr; i++) ofile << ids_selected[0][i] << endl;
-         ofile.close();
-         ofile.open("g21s.txt");
-         for (i = 0; i < nstr; i++) ofile << ids_selected[1][i] << endl;
-         ofile.close();
-         ofile.open("g22s.txt");
-         for (i = 0; i < nstr; i++) ofile << ids_selected[2][i] << endl;
-         ofile.close();
-         ofile.open("g30s.txt");
-         for (i = 0; i < nstr; i++) ofile << ids_selected[3][i] << endl;
-         ofile.close();
-         ofile.open("g31s.txt");
-         for (i = 0; i < nstr; i++) ofile << ids_selected[4][i] << endl;
-         ofile.close();
-         ofile.open("g32s.txt");
-         for (i = 0; i < nstr; i++) ofile << ids_selected[5][i] << endl;
-         ofile.close();
-         ofile.open("g33s.txt");
-         for (i = 0; i < nstr; i++) ofile << ids_selected[6][i] << endl;
-         ofile.close();
-         ofile.open("g40s.txt");
-         for (i = 0; i < nstr; i++) ofile << ids_selected[7][i] << endl;
-         ofile.close();
-         ofile.open("g41s.txt");
-         for (i = 0; i < nstr; i++) ofile << ids_selected[8][i] << endl;
-         ofile.close();
-         ofile.open("g42s.txt");
-         for (i = 0; i < nstr; i++) ofile << ids_selected[9][i] << endl;
-         ofile.close();
-         ofile.open("g43s.txt");
-         for (i = 0; i < nstr; i++) ofile << ids_selected[10][i] << endl;
-         ofile.close();
-         ofile.open("g44s.txt");
-         for (i = 0; i < nstr; i++) ofile << ids_selected[11][i] << endl;
-         ofile.close();
+         for (j = 0; j < 12; j++) {
+            ofile.open((string(blocks[j]) + ".txt").c_str());
+            for (i = 0; i < nstr; i++) ofile << ids_selected[j][i] << endl;
+            ofile.close();
+         }
          ofile.open("ranks.txt");
          for (i = 0; i < nsub; i++) ofile << ranks[i] << endl;
          ofile.close();
       } else {
-         if (!File2Array("g20s.txt", ids_selected[0])) goto end;
-         if (!File2Array("g21s.txt", ids_selected[1])) goto end;
-         if (!File2Array("g22s.txt", ids_selected[2])) goto end;
-         if (!File2Array("g30s.txt", ids_selected[3])) goto end;
-         if (!File2Array("g31s.txt", ids_selected[4])) goto end;
-         if (!File2Array("g32s.txt", ids_selected[5])) goto end;
-         if (!File2Array("g33s.txt", ids_selected[6])) goto end;
-         if (!File2Array("g40s.txt", ids_selected[7])) goto end;
-         if (!File2Array("g41s.txt", ids_selected[8])) goto end;
-         if (!File2Array("g42s.txt", ids_selected[9])) goto end;
-         if (!File2Array("g43s.txt", ids_selected[10])) goto end;
-         if (!File2Array("g44s.txt", ids_selected[11])) goto end;
+         for (j = 0; j < 12; j++) {
+            if (!File2Array(string(blocks[j]) + ".txt", ids_selected[j])) goto end;
+         }
          if (!File2Array("ranks.txt", ranks)) goto end;
          for (i=0; i < nsub; i++) {
             vars_selected[i] = new int[ranks[i]];
@@ -536,18 +314,9 @@ void RunTasks() {
    } else {
       max_case_count = (g_params.rbs_2b + g_params.rbs_3b + g_params.rbs_4b)*100;
       cout << "max_case_count: " << max_case_count << endl;
-      if (!File2Array("g20s.txt", ids_selected[0])) goto end;
-      if (!File2Array("g21s.txt", ids_selected[1])) goto end;
-      if (!File2Array("g22s.txt", ids_selected[2])) goto end;
-      if (!File2Array("g30s.txt", ids_selected[3])) goto end;
-      if (!File2Array("g31s.txt", ids_selected[4])) goto end;
-      if (!File2Array("g32s.txt", ids_selected[5])) goto end;
-      if (!File2Array("g33s.txt", ids_selected[6])) goto end;
-      if (!File2Array("g40s.txt", ids_selected[7])) goto end;
-      if (!File2Array("g41s.txt", ids_selected[8])) goto end;
-      if (!File2Array("g42s.txt", ids_selected[9])) goto end;
-      if (!File2Array("g43s.txt", ids_selected[10])) goto end;
-      if (!File2Array("g44s.txt", ids_selected[11])) goto end;
+      for (j = 0; j < 12; j++) {
+         if (!File2Array(string(blocks[j]) + "s.txt", ids_selected[j])) goto end;
+      }
       if (!File2Array("ndescs_sketch.txt", ndescs)) goto end;
       ids_train = new int[max_case_count];
       for (i=0, ndesc=0; i < nsub; i++) ndesc += ndescs[i];
@@ -572,14 +341,6 @@ end:
    delete [] stdevs_to_save;
    delete [] avgs;
    delete [] stdevs;
-   delete [] ngp;
-   delete [] stypes4;
-   delete [] types4;
-   delete [] stypes3;
-   delete [] types3;
-   delete [] types2;
-   delete [] dmax;
-   delete [] dmin;
    delete [] v;
    delete [] Y;
 }

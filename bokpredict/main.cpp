@@ -14,7 +14,7 @@ using std::cout;
 using std::endl;
 using std::ifstream;
 
-PType g_params;
+PTypeExtended g_params;
 
 bool ReadParams(const char *fn) {
    int ival;

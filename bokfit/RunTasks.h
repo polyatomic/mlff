@@ -1,27 +1,16 @@
 #pragma once
 
 #include <string>
+#include "chemutil.h"
 
 using std::string;
 
-struct PType {
-   string molFile;
-   string eFile;
-   string t1;
-   string t2;
-   string t3;
-   string t4;
-   string dist;
-   string ngp;
+struct PTypeExtended : public PType {
    int rbs_2b;
    int rbs_3b;
    int rbs_4b;
-   int nthreads;
    int maxrows;
-   int kernel_2b;
-   int kernel_3b;
-   int kernel_4b;
-   int nsketch = 0;
+   int nsketch;
    bool preselect_descriptors;
    bool read_descriptors;
    bool build_regression;

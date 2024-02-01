@@ -50,9 +50,16 @@ m_ngp4(0) {
 }
 
 Descriptors::~Descriptors() {
+   delete [] m_t2;
    delete [] m_ngp2;
    delete [] m_dist;
    delete [] m_t2b;
+   delete [] m_t3;
+   delete [] m_st3;
+   delete [] m_t3b;
+   delete [] m_t4;
+   delete [] m_st4;
+   delete [] m_t4b;
    ReleaseGrid();
 }
 
@@ -65,7 +72,9 @@ bool Descriptors::Init(int na, int nt2, int *t2, int nt3, int *st3, int *t3, int
    m_na = na;
    m_na2 = na*(na-1)/2;
    m_nt2 = nt2;
-   m_t2 = t2;
+   delete [] m_t2;
+   m_t2 = new int[m_na2];
+   for (i=0; i < m_na2; i++) m_t2[i] = t2[i];
    delete [] m_ngp2;
    m_ngp2 = new int[nt2];
    for (i=0; i < nt2; i++) m_ngp2[i] = ngp[i];
@@ -76,15 +85,23 @@ bool Descriptors::Init(int na, int nt2, int *t2, int nt3, int *st3, int *t3, int
    m_nt3 = nt3;
    if (!nt3) return true;
    m_na3 = na*(na-1)*(na-2)/6;
-   m_t3 = t3;
-   m_st3 = st3;
+   delete [] m_t3;
+   m_t3 = new int[4*m_na3];
+   for (i=0; i < 4*m_na3; i++) m_t3[i] = t3[i];
+   delete [] m_st3;
+   m_st3 = new int[nt3];
+   for (i=0; i < nt3; i++) m_st3[i] = st3[i];
    delete [] m_t3b;
    m_t3b = new int[nt3];
    m_nt4 = nt4;
    if (!nt4) return true;
    m_na4 = na*(na-1)*(na-2)*(na-3)/24;
-   m_t4 = t4;
-   m_st4 = st4;
+   delete [] m_t4;
+   m_t4 = new int[7*m_na4];
+   for (i=0; i < 7*m_na4; i++) m_t4[i] = t4[i];
+   delete [] m_st4;
+   m_st4 = new int[nt4];
+   for (i=0; i < nt4; i++) m_st4[i] = st4[i];
    delete [] m_t4b;
    m_t4b = new int[nt4];
    return true;
