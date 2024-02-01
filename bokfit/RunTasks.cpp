@@ -226,7 +226,7 @@ void RunTasks() {
       if (g_params.order_by_leverages) {
          order_by_leverages(nstr, ndescs, nsub, "descs.bin", "descst.bin", ids_selected, levs, ranks, g_params.maxrows, g_params.nthreads);
          for (j = 0; j < 12; j++) {
-            ofile.open((string(blocks[j]) + ".txt").c_str());
+            ofile.open((string(blocks[j]) + "s.txt").c_str());
             for (i = 0; i < nstr; i++) ofile << ids_selected[j][i] << endl;
             ofile.close();
          }
@@ -235,7 +235,7 @@ void RunTasks() {
          ofile.close();
       } else {
          for (j = 0; j < 12; j++) {
-            if (!File2Array(string(blocks[j]) + ".txt", ids_selected[j])) goto end;
+            if (!File2Array(string(blocks[j]) + "s.txt", ids_selected[j])) goto end;
          }
          if (!File2Array("ranks.txt", ranks)) goto end;
          for (i=0; i < nsub; i++) {
