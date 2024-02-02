@@ -42,23 +42,22 @@ void RunTasks() {
    Descriptors descs;
    TFunctorDaDaI<Descriptors> dcalc;
    string s = g_params.linearCoeffs;
+   if (!calculation_prepare(&g_params, mols, descs, nstr, n, v, Y)) goto end;
+   ndesc = descs.GetNDescriptors();
+   cout << "Number of descriptors: " << ndesc << endl;
+   dcalc.init(&descs, &Descriptors::Calculate);
+   B = new double[ndesc+1];
    if (s.size() > 0) {
       File2Matrix(s.c_str(), nr, nc, B);
    } else {
       cerr << "Descriptor coeffs undefined" << endl;
       goto end;
    }
-   if (!calculation_prepare(&g_params, mols, descs, nstr, n, v, Y)) goto end;
-   ndesc = descs.GetNDescriptors();
-   cout << "Number of descriptors: " << ndesc << endl;
-   B = new double[ndesc+1];
-   dcalc.init(&descs, &Descriptors::Calculate);
    stdevs = new double[ndesc];
    avgs = new double[ndesc];
    File2Matrix("avgs.bin", nr, nc, avgs);
    File2Matrix("stdevs.bin", nr, nc, stdevs);
    avg = g_params.bias;
-   s = g_params.eFile;
    Yp = new double[nstr];
    nthreads = g_params.nthreads;
    cout << "Using " << nthreads << " threads" << endl;
