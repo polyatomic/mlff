@@ -1123,11 +1123,11 @@ end:
 }
 
 bool build_regression(int N, int M[], int Mtot, int substart, int nsub, const char *wmatc_name, double *Yc, int *ids_selected[], int n_incr, int n_steps, int &n_training, int *ids_training, bool save_coeffs) {
-   int i, ii, j, k, mtot, maxcases, n_selected_current, best_sub, ndiff, n_size, best_n_size, best_k, best_ndim;
-   int *itmp, *ids_selectedo, *ids_selected_current, *ids_to_add, *idit, *ids_selected_currentc;
+   int i, ii, j, k, mtot, maxcases, n_selected_current, best_sub, ndiff, n_size, best_k, best_ndim, n_added;
+   int *itmp, *ids_selectedo, *ids_selected_current, *ids_to_add, *idit;
    int *ids_selectedos[5] = {};
-   int n_sizes[5] = {};
    int nselected[12] = {};
+   int n_addeds[12] = {};
    int ndims[5] = {};
    double rmse_max, best_rmse_test, best_rmse_total, best_rmse, best_mae_train, best_mae_test, best_mae_total;
    double rmse_trains[5] = {};
@@ -1137,6 +1137,7 @@ bool build_regression(int N, int M[], int Mtot, int substart, int nsub, const ch
    double mae_tests[5] = {};
    double mae_totals[5] = {};
    thread threads[MAX_THREADS];
+   bool res = true;
    cout << "#####   Starting build_regression   #####\n";
    cout << "Number of rows: " << N << endl;
    mtot = 0;
@@ -1149,6 +1150,7 @@ bool build_regression(int N, int M[], int Mtot, int substart, int nsub, const ch
    cout << "Number of submatrices: " << nsub << endl;
    cout << "Training set size increment: " << n_incr << endl;
    cout << "Number of steps: " << n_steps << endl;
+   cout << "Initial size of training set: " << n_training << endl;
    maxcases = n_training + n_steps*n_incr;
    itmp = new int[N];
    ids_selectedo = new int[N];
@@ -1156,8 +1158,7 @@ bool build_regression(int N, int M[], int Mtot, int substart, int nsub, const ch
       ids_selectedos[i] = new int[N];
    }
    ids_selected_current = new int[maxcases];
-   ids_selected_currentc = new int[maxcases];
-   ids_to_add = new int[n_incr];
+   ids_to_add = new int[N];
    n_selected_current = n_training;
    for (i=0; i < n_selected_current; i++) ids_selected_current[i] = ids_training[i];
    for (i = 0; i < N; i++) itmp[i] = i;
@@ -1166,30 +1167,36 @@ bool build_regression(int N, int M[], int Mtot, int substart, int nsub, const ch
    cout << "Step rmse(train) mae(train) rank:" << endl;
    for (k=0; k < n_steps; k++) {
       rmse_max = 0.0;
-      for (j = 0; j < n_selected_current; j++) ids_selected_currentc[j] = ids_selected_current[j];
       j = substart;
+      n_added = n_incr;
       for (;;) {
-         for (i = 0; i < n_selected_current; i++) ids_selectedo[i] = ids_selected_currentc[i];
-         for (i = nselected[j]*n_incr, ii = 0; i < (nselected[j] + 1)*n_incr; i++, ii++) {
+         for (i = 0; i < n_selected_current; i++) ids_selectedo[i] = ids_selected_current[i];
+         for (i = nselected[j], ii = 0; i < nselected[j] + n_added; i++, ii++) {
             ids_to_add[ii] = ids_selected[j][i];
          }
-         sort(ids_to_add, ids_to_add + n_incr);
-         idit = set_difference(ids_to_add, ids_to_add + n_incr, ids_selectedo, ids_selectedo + n_selected_current, ids_selectedo + n_selected_current);
+         sort(ids_to_add, ids_to_add + n_added);
+         idit = set_difference(ids_to_add, ids_to_add + n_added, ids_selectedo, ids_selectedo + n_selected_current, ids_selectedo + n_selected_current);
          ndiff = idit - (ids_selectedo + n_selected_current);
-         n_size = n_selected_current + ndiff;
-         if (ndiff == 0 && (nselected[j] + 2)*n_incr <= N) {
-            nselected[j]++;
+         if (ndiff < n_incr) {
+            n_added += (n_incr - ndiff);
             continue;
          }
+         if (ndiff != n_incr) {
+            cerr << "build_regression error: ndiff != n_incr" << endl;
+            res = false;
+            goto end;
+         }
+         n_addeds[j] = n_added;
+         n_size = n_selected_current + ndiff;
          sort(ids_selectedo, ids_selectedo + n_size);
          set_difference(itmp, itmp + N, ids_selectedo, ids_selectedo + n_size, ids_selectedo + n_size);
          ii = j - substart;
          for (i=0; i < N; i++) ids_selectedos[ii][i] = ids_selectedo[i];
-         n_sizes[ii] = n_size;
          j++;
+         n_added = n_incr;
          if (j == substart + nsub) break;
       }
-      auto f_regression = [&](int ip){ calculate_linear_regression(N, mtot, Mtot, wmatc_name, ids_selectedos[ip], n_sizes[ip], Yc, rmse_trains[ip], rmse_tests[ip], rmse_totals[ip], mae_trains[ip], mae_tests[ip], mae_totals[ip], ndims[ip], false, false); };
+      auto f_regression = [&](int ip){ calculate_linear_regression(N, mtot, Mtot, wmatc_name, ids_selectedos[ip], n_size, Yc, rmse_trains[ip], rmse_tests[ip], rmse_totals[ip], mae_trains[ip], mae_tests[ip], mae_totals[ip], ndims[ip], false, false); };
       for (ii = 0; ii < nsub; ii++) {
          threads[ii] = thread(f_regression, ii);
          //f_regression(ii);
@@ -1205,15 +1212,18 @@ bool build_regression(int N, int M[], int Mtot, int substart, int nsub, const ch
             best_mae_train = mae_trains[ii];
             best_mae_test = mae_tests[ii];
             best_mae_total = mae_totals[ii];
-            for (i = 0; i < n_sizes[ii]; i++) ids_selected_current[i] = ids_selectedos[ii][i];
+            for (i = 0; i < n_size; i++) ids_selected_current[i] = ids_selectedos[ii][i];
             best_sub = j;
-            best_n_size = n_sizes[ii];
          }
       }
       cout << k << " " << rmse_max << " " << best_mae_train << " " << best_ndim << endl;
+      nselected[best_sub] += n_addeds[best_sub];
+      for (j = substart; j < substart + nsub; j++) {
+         cout << "   " << nselected[j];
+      }
+      cout << endl;
       // cout << k << " " << rmse_max << " " << best_rmse_test << " " << best_rmse_total << endl;
-      if ((nselected[best_sub]+2)*n_incr <= N) nselected[best_sub]++;
-      n_selected_current = best_n_size;
+      n_selected_current += n_incr;
       if (rmse_max > best_rmse) {
          n_training = n_selected_current;
          best_rmse = rmse_max;
@@ -1231,13 +1241,13 @@ bool build_regression(int N, int M[], int Mtot, int substart, int nsub, const ch
    cout << "mae(total): " << mae_totals[0] << endl;
    cout << "Number of selected cases: " << n_training << endl;
    cout << "#####   Finished build_regression   #####\n";
+end:
    delete [] ids_to_add;
-   delete [] ids_selected_currentc;
    delete [] ids_selected_current;
    for (i=0; i < 5; i++) {
       delete [] ids_selectedos[i];
    }
    delete [] ids_selectedo;
    delete [] itmp;
-   return true;
+   return res;
 }
