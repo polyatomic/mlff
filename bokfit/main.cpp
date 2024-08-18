@@ -32,9 +32,7 @@ bool ReadParams(const char *fn) {
    g_params.maxrows = 1000;
    g_params.build_regression = false;
    g_params.order_by_leverages = false;
-   g_params.rbs_2b = 0;
-   g_params.rbs_3b = 0;
-   g_params.rbs_4b = 0;
+   g_params.tss = 1000;
    g_params.kernel_2b = 0;
    g_params.kernel_3b = 0;
    g_params.kernel_4b = 0;
@@ -79,15 +77,9 @@ bool ReadParams(const char *fn) {
          g_params.t3 = val;
       } else if (par == "ATOM_TYPE_QUADRUPLETS") {
          g_params.t4 = val;
-      } else if (par == "REGRESSION_BUILDING_STEPS_2B") {
+      } else if (par == "TRAINING_SET_SIZE") {
          ival = atoi(val.c_str());
-         g_params.rbs_2b = ival;
-      } else if (par == "REGRESSION_BUILDING_STEPS_3B") {
-         ival = atoi(val.c_str());
-         g_params.rbs_3b = ival;
-      } else if (par == "REGRESSION_BUILDING_STEPS_4B") {
-         ival = atoi(val.c_str());
-         g_params.rbs_4b = ival;
+         g_params.tss = ival;
       } else if (par == "DISTANCES") {
          g_params.dist = val;
       } else if (par == "NUMBER_OF_GRID_POINTS") {

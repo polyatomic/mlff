@@ -6,9 +6,7 @@
 using std::string;
 
 struct PTypeExtended : public PType {
-   int rbs_2b;
-   int rbs_3b;
-   int rbs_4b;
+   int tss;
    int maxrows;
    int nsketch;
    bool preselect_descriptors;

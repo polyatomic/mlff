@@ -611,12 +611,19 @@ bool order_by_leverages(int N, int M[], int nsub, const char *wmatc_name, const 
    return true;
 }
 
+// Select columns of nrows x ncols matrix X that are least correlated with each other and with the columns of nrows x ncols2 matrix X2
+// nrows - number of rows of matrices X and X2
+// ncols - number of columns of matrix X
+// ncols2 - number of columns of matrix X2
+// selected_variables - selected columns of matrix X
+// nsel_max - maximum number of columns to select
+// nsel_real - number of columns actually selected
+// nthreads - number of threads to use
 void sketch_matrix(int nrows, int ncols, int ncols2, const double *X, const double *X2, int *selected_variables, int nsel_max, int& nsel_real, int nthreads) {
    int i, j, jj, k, kk, ntot, pcount, nsel, imax;
    int js[MAX_THREADS];
    long long il;
    int *varids_sorted, *priority_queue;
-   bool *added;
    double rssmax;
    double rss[MAX_THREADS];
    double *X_selected_t, *X_selected, *u, *s, *vt, *priority_queue_weights, *dp1;
@@ -636,8 +643,6 @@ void sketch_matrix(int nrows, int ncols, int ncols2, const double *X, const doub
    vt = new double[(nsel_max+ncols2)*(nsel_max+ncols2)];
    priority_queue_weights = new double[ncols];
    priority_queue = new int[ncols];
-   added = new bool[ncols];
-   for (i=0; i < ncols; i++) added[i] = false;
    auto rule2 = [priority_queue_weights](int i, int j) -> bool { return priority_queue_weights[i] > priority_queue_weights[j]; };
    varids_sorted = new int[ncols];
    for (i=0; i < MAX_THREADS; i++) {
@@ -686,11 +691,6 @@ void sketch_matrix(int nrows, int ncols, int ncols2, const double *X, const doub
       for (k=0,kk=0;;) {
          j = priority_queue[k];
          k++;
-         if (added[j]) {
-            if (k == pcount) break;
-            continue;
-         }
-         added[j] = true;
          for (i = 0; i < nrows; i++) sr[kk][i] = X[i*((long long)ncols)+j];
          auto job = [&](int jid){ rss[jid] = find_prediction_rss(X_selected_t, u, s, vt, nrows, ntot, sr[jid], utb[jid], yy[jid], b[jid]); };
          js[kk] = j;
@@ -705,7 +705,6 @@ void sketch_matrix(int nrows, int ncols, int ncols2, const double *X, const doub
       }
       sort(priority_queue, priority_queue + pcount, rule2);
       if (priority_queue[0] != jj) continue;
-      for (i = 0; i < ncols; i++) added[i] = false;
       imax = priority_queue[0];
       rssmax = priority_queue_weights[imax];
       pcount--;
@@ -735,7 +734,6 @@ void sketch_matrix(int nrows, int ncols, int ncols2, const double *X, const doub
       delete [] sr[i];
    }
    delete [] varids_sorted;
-   delete [] added;
    delete [] priority_queue;
    delete [] priority_queue_weights;
    delete [] vt;
@@ -868,6 +866,15 @@ void sketch_matrix(int nrows, int ncols, int ncols_retain, const double *X, cons
    delete [] dvec;
 }
 
+// N - number of rows
+// M - number of columns for each block
+// nsub - number of blocks
+// wmatc_name - name of the matrix file
+// ids_selected - leverage ordered ids for each block
+// ranks - rank for each block
+// n_test_rows - number of rows to select from each block
+// nthreads - number of threads to use
+// selected_variables
 void sketch_matrices(int N, int M[], int nsub, const char *wmatc_name, int *ids_selected[], int ranks[], int n_test_rows, int nthreads, int *selected_variables[]) {
    int i, j, k, Mtot, ranktot, maxcols, mat_id, nr, nc, r_skip1, nrows, n_selected_total, r_skip2, ncols, ncolsprev, ncolsnew, ncolsprevupd, nsel;
    long long il;
@@ -1122,132 +1129,37 @@ end:
    return true;
 }
 
-bool build_regression(int N, int M[], int Mtot, int substart, int nsub, const char *wmatc_name, double *Yc, int *ids_selected[], int n_incr, int n_steps, int &n_training, int *ids_training, bool save_coeffs) {
-   int i, ii, j, k, mtot, maxcases, n_selected_current, best_sub, ndiff, n_size, best_k, best_ndim, n_added;
-   int *itmp, *ids_selectedo, *ids_selected_current, *ids_to_add, *idit;
-   int *ids_selectedos[5] = {};
-   int nselected[12] = {};
-   int n_addeds[12] = {};
-   int ndims[5] = {};
-   double rmse_max, best_rmse_test, best_rmse_total, best_rmse, best_mae_train, best_mae_test, best_mae_total;
-   double rmse_trains[5] = {};
-   double rmse_tests[5] = {};
-   double rmse_totals[5] = {};
-   double mae_trains[5] = {};
-   double mae_tests[5] = {};
-   double mae_totals[5] = {};
-   thread threads[MAX_THREADS];
+bool build_regression(int N, int M[], int Mtot, int nsub, const char *wmatc_name, double *Yc, int *ids_selected[], int n_training, int *ids_training) {
+   int i, j, ndim;
+   double rmse_train, rmse_test, rmse_total, mae_train, mae_test, mae_total;
    bool res = true;
+   set<int> tr_ids;
    cout << "#####   Starting build_regression   #####\n";
    cout << "Number of rows: " << N << endl;
-   mtot = 0;
-   for (i = 0; i < substart + nsub; i++) {
-      mtot += M[i];
-   }
-   cout << "Number of basis functions: " << mtot << endl;
    cout << "Total number of basis functions: " << Mtot << endl;
-   cout << "Starting submatrix: " << substart << endl;
    cout << "Number of submatrices: " << nsub << endl;
-   cout << "Training set size increment: " << n_incr << endl;
-   cout << "Number of steps: " << n_steps << endl;
-   cout << "Initial size of training set: " << n_training << endl;
-   maxcases = n_training + n_steps*n_incr;
-   itmp = new int[N];
-   ids_selectedo = new int[N];
-   for (i = 0; i < 5; i++) {
-      ids_selectedos[i] = new int[N];
+   cout << "Size of training set: " << n_training << endl;
+   for (j=0; j < N; j++) {
+      for (i = 0; i < nsub; i++) {
+         tr_ids.insert(ids_selected[i][j]);
+         if (tr_ids.size() == n_training) break;
+      }
+      if (tr_ids.size() == n_training) break;
    }
-   ids_selected_current = new int[maxcases];
-   ids_to_add = new int[N];
-   n_selected_current = n_training;
-   for (i=0; i < n_selected_current; i++) ids_selected_current[i] = ids_training[i];
-   for (i = 0; i < N; i++) itmp[i] = i;
-   best_rmse = 0.0;
-   best_k = 0;
-   cout << "Step rmse(train) mae(train) rank:" << endl;
-   for (k=0; k < n_steps; k++) {
-      rmse_max = 0.0;
-      j = substart;
-      n_added = n_incr;
-      for (;;) {
-         for (i = 0; i < n_selected_current; i++) ids_selectedo[i] = ids_selected_current[i];
-         for (i = nselected[j], ii = 0; i < nselected[j] + n_added; i++, ii++) {
-            ids_to_add[ii] = ids_selected[j][i];
-         }
-         sort(ids_to_add, ids_to_add + n_added);
-         idit = set_difference(ids_to_add, ids_to_add + n_added, ids_selectedo, ids_selectedo + n_selected_current, ids_selectedo + n_selected_current);
-         ndiff = idit - (ids_selectedo + n_selected_current);
-         if (ndiff < n_incr) {
-            n_added += (n_incr - ndiff);
-            continue;
-         }
-         if (ndiff != n_incr) {
-            cerr << "build_regression error: ndiff != n_incr" << endl;
-            res = false;
-            goto end;
-         }
-         n_addeds[j] = n_added;
-         n_size = n_selected_current + ndiff;
-         sort(ids_selectedo, ids_selectedo + n_size);
-         set_difference(itmp, itmp + N, ids_selectedo, ids_selectedo + n_size, ids_selectedo + n_size);
-         ii = j - substart;
-         for (i=0; i < N; i++) ids_selectedos[ii][i] = ids_selectedo[i];
-         j++;
-         n_added = n_incr;
-         if (j == substart + nsub) break;
-      }
-      auto f_regression = [&](int ip){ calculate_linear_regression(N, mtot, Mtot, wmatc_name, ids_selectedos[ip], n_size, Yc, rmse_trains[ip], rmse_tests[ip], rmse_totals[ip], mae_trains[ip], mae_tests[ip], mae_totals[ip], ndims[ip], false, false); };
-      for (ii = 0; ii < nsub; ii++) {
-         threads[ii] = thread(f_regression, ii);
-         //f_regression(ii);
-      }
-      for (ii=0; ii < nsub; ii++) threads[ii].join();
-      for (ii = 0; ii < nsub; ii++) {
-         j = substart + ii;
-         if (rmse_trains[ii] > rmse_max) {
-            best_ndim = ndims[ii];
-            rmse_max = rmse_trains[ii];
-            best_rmse_test = rmse_tests[ii];
-            best_rmse_total = rmse_totals[ii];
-            best_mae_train = mae_trains[ii];
-            best_mae_test = mae_tests[ii];
-            best_mae_total = mae_totals[ii];
-            for (i = 0; i < n_size; i++) ids_selected_current[i] = ids_selectedos[ii][i];
-            best_sub = j;
-         }
-      }
-      cout << k << " " << rmse_max << " " << best_mae_train << " " << best_ndim << endl;
-      nselected[best_sub] += n_addeds[best_sub];
-      for (j = substart; j < substart + nsub; j++) {
-         cout << "   " << nselected[j];
-      }
-      cout << endl;
-      // cout << k << " " << rmse_max << " " << best_rmse_test << " " << best_rmse_total << endl;
-      n_selected_current += n_incr;
-      if (rmse_max > best_rmse) {
-         n_training = n_selected_current;
-         best_rmse = rmse_max;
-         best_k = k;
-         for (i=0; i < n_selected_current; i++) ids_training[i] = ids_selected_current[i];
-      }
+   if (tr_ids.size() != n_training) {
+      cerr << "Couldn't collect data" << endl;
+      res = false;
+      goto end;
    }
-   calculate_linear_regression(N, mtot, Mtot, wmatc_name, ids_training, n_training, Yc, rmse_trains[0], rmse_tests[0], rmse_totals[0], mae_trains[0], mae_tests[0], mae_totals[0], ndims[0], true, false, save_coeffs);
-   cout << "Best iteration: " << best_k << endl;
-   cout << "rmse(train): " << rmse_trains[0] << endl;
-   cout << "mae(train): " << mae_trains[0] << endl;
-   cout << "rmse(test): " << rmse_tests[0] << endl;
-   cout << "mae(test): " << mae_tests[0] << endl;
-   cout << "rmse(total): " << rmse_totals[0] << endl;
-   cout << "mae(total): " << mae_totals[0] << endl;
-   cout << "Number of selected cases: " << n_training << endl;
+   copy(tr_ids.begin(), tr_ids.end(), ids_training);
+   calculate_linear_regression(N, Mtot, Mtot, wmatc_name, ids_training, n_training, Yc, rmse_train, rmse_test, rmse_total, mae_train, mae_test, mae_total, ndim, true, false, true);
+   cout << "rmse(train): " << rmse_train << endl;
+   cout << "mae(train): " << mae_train << endl;
+   cout << "rmse(test): " << rmse_test << endl;
+   cout << "mae(test): " << mae_test << endl;
+   cout << "rmse(total): " << rmse_total << endl;
+   cout << "mae(total): " << mae_total << endl;
    cout << "#####   Finished build_regression   #####\n";
 end:
-   delete [] ids_to_add;
-   delete [] ids_selected_current;
-   for (i=0; i < 5; i++) {
-      delete [] ids_selectedos[i];
-   }
-   delete [] ids_selectedo;
-   delete [] itmp;
    return res;
 }

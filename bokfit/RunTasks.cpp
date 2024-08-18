@@ -20,7 +20,7 @@ using std::ios;
 
 void RunTasks() {
    int i, j, k, l, nstr, n, m, ndesc, ndesc_sketch, ndesc20, ndesc21, ndesc22, ndesc4, ndesc40, ndesc41, nsub, ntrain,
-       ndesc2, kk, ndesc3, ndesc30, ndesc31, ndesc32, ndesc33, ndesc42, ndesc43, ndesc44, max_case_count, nr, nc, np;
+       ndesc2, kk, ndesc3, ndesc30, ndesc31, ndesc32, ndesc33, ndesc42, ndesc43, ndesc44, nr, nc, np;
    int *ids_train;
    double avg, x;
    double *Y, *v, *rcoords, *stdevs, *avgs, *wmatc, *Yc, *stdevs_to_save, *avgs_to_save;
@@ -312,21 +312,14 @@ void RunTasks() {
          ofile.close();
       }
    } else {
-      max_case_count = (g_params.rbs_2b + g_params.rbs_3b + g_params.rbs_4b)*1000;
-      cout << "max_case_count: " << max_case_count << endl;
       for (j = 0; j < 12; j++) {
          if (!File2Array(string(blocks[j]) + "s.txt", ids_selected[j])) goto end;
       }
       if (!File2Array("ndescs_sketch.txt", ndescs)) goto end;
-      ids_train = new int[max_case_count];
+      ntrain = g_params.tss;
+      ids_train = new int[ntrain];
       for (i=0, ndesc=0; i < nsub; i++) ndesc += ndescs[i];
-      ntrain = 0;
-      build_regression(nstr, ndescs, ndesc, 0, 3, "descs_sketch.bin", Yc, ids_selected, 1000, g_params.rbs_2b, ntrain, ids_train);
-      if (nsub > 3) {
-         build_regression(nstr, ndescs, ndesc, 3, 4, "descs_sketch.bin", Yc, ids_selected, 1000, g_params.rbs_3b, ntrain, ids_train);
-         if (nsub > 7)
-            build_regression(nstr, ndescs, ndesc, 7, 5, "descs_sketch.bin", Yc, ids_selected, 1000, g_params.rbs_4b, ntrain, ids_train, true);
-      }
+      build_regression(nstr, ndescs, ndesc, nsub, "descs_sketch.bin", Yc, ids_selected, ntrain, ids_train);
       cout << "Dependent variable average: " << setprecision(prec) << avg << setprecision(oldprec) << endl;
    }
 end:
