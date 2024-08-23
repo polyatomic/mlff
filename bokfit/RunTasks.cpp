@@ -22,7 +22,7 @@ void RunTasks() {
    int i, j, k, l, nstr, n, m, ndesc, ndesc_sketch, ndesc20, ndesc21, ndesc22, ndesc4, ndesc40, ndesc41, nsub, ntrain,
        ndesc2, kk, ndesc3, ndesc30, ndesc31, ndesc32, ndesc33, ndesc42, ndesc43, ndesc44, nr, nc, np;
    int *ids_train;
-   double avg, x;
+   double avg, x, rmse;
    double *Y, *v, *rcoords, *stdevs, *avgs, *wmatc, *Yc, *stdevs_to_save, *avgs_to_save;
    int ndescs[12] = {};
    int ndescs_sketch[12] = {};
@@ -181,7 +181,11 @@ void RunTasks() {
    Yc = new double[nstr];
    for (i = 0, avg = 0.0; i < nstr; i++) avg += Y[i];
    avg /= nstr;
-   for (i = 0; i < nstr; i++) Yc[i] = Y[i] - avg;
+   for (i = 0, rmse = 0.0; i < nstr; i++) {
+      Yc[i] = Y[i] - avg;
+      rmse += Yc[i]*Yc[i];
+   }
+   rmse = sqrt(rmse/nstr);
    ndescs[0] = ndesc20;
    ndescs[1] = ndesc21;
    ndescs[2] = ndesc22;
@@ -320,7 +324,8 @@ void RunTasks() {
       ids_train = new int[ntrain];
       for (i=0, ndesc=0; i < nsub; i++) ndesc += ndescs[i];
       build_regression(nstr, ndescs, ndesc, nsub, "descs_sketch.bin", Yc, ids_selected, ntrain, ids_train);
-      cout << "Dependent variable average: " << setprecision(prec) << avg << setprecision(oldprec) << endl;
+      cout << "Dependent variable average: " << setprecision(prec) << avg << endl;
+      cout << "Dependent variable rmse: " << rmse << setprecision(oldprec) << endl;
    }
 end:
    delete [] ids_train;

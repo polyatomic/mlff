@@ -1130,8 +1130,10 @@ end:
 }
 
 bool build_regression(int N, int M[], int Mtot, int nsub, const char *wmatc_name, double *Yc, int *ids_selected[], int n_training, int *ids_training) {
-   int i, j, ndim;
+   int i, ndim, nr, nc;
+   int *isel;
    double rmse_train, rmse_test, rmse_total, mae_train, mae_test, mae_total;
+   double *lev, *wmatc;
    bool res = true;
    set<int> tr_ids;
    cout << "#####   Starting build_regression   #####\n";
@@ -1139,19 +1141,16 @@ bool build_regression(int N, int M[], int Mtot, int nsub, const char *wmatc_name
    cout << "Total number of basis functions: " << Mtot << endl;
    cout << "Number of submatrices: " << nsub << endl;
    cout << "Size of training set: " << n_training << endl;
-   for (j=0; j < N; j++) {
-      for (i = 0; i < nsub; i++) {
-         tr_ids.insert(ids_selected[i][j]);
-         if (tr_ids.size() == n_training) break;
-      }
-      if (tr_ids.size() == n_training) break;
-   }
-   if (tr_ids.size() != n_training) {
-      cerr << "Couldn't collect data" << endl;
-      res = false;
-      goto end;
-   }
-   copy(tr_ids.begin(), tr_ids.end(), ids_training);
+   isel = new int[N];
+   lev = new double[N];
+   wmatc = new double[Mtot*N];
+   File2Matrix(wmatc_name, nr, nc, wmatc);
+   order_by_leverages(N, Mtot, wmatc, isel, lev);
+   for (i=0; i < n_training; i++) ids_training[i] = isel[i];
+   sort(ids_training, ids_training+n_training);
+   delete [] wmatc;
+   delete [] lev;
+   delete [] isel;
    calculate_linear_regression(N, Mtot, Mtot, wmatc_name, ids_training, n_training, Yc, rmse_train, rmse_test, rmse_total, mae_train, mae_test, mae_total, ndim, true, false, true);
    cout << "rmse(train): " << rmse_train << endl;
    cout << "mae(train): " << mae_train << endl;
@@ -1160,6 +1159,5 @@ bool build_regression(int N, int M[], int Mtot, int nsub, const char *wmatc_name
    cout << "rmse(total): " << rmse_total << endl;
    cout << "mae(total): " << mae_total << endl;
    cout << "#####   Finished build_regression   #####\n";
-end:
    return res;
 }
