@@ -64,6 +64,7 @@ void RunTasks() {
    int prec = numeric_limits<double>::max_digits10;
    streamsize oldprec = cout.precision();
    TFunctorDaDaI<Descriptors> dcalc;
+   descs.SetUseInverseSpace(g_params.uis);
    if (!calculation_prepare(&g_params, mols, descs, nstr, n, v, Y)) goto end;
    if (g_params.preselect_descriptors) {
       for (i = 0; i < nstr; i++) {

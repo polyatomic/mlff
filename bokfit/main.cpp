@@ -37,6 +37,7 @@ bool ReadParams(const char *fn) {
    g_params.kernel_3b = 0;
    g_params.kernel_4b = 0;
    g_params.nsketch = 0;
+   g_params.uis = false;
    for (;;) {
       if (ifile.eof()) break;
       getline(ifile, line, '\n');
@@ -114,6 +115,9 @@ bool ReadParams(const char *fn) {
       } else if (par == "ORDER_BY_LEVERAGES") {
          ival = atoi(val.c_str());
          if (ival == 1) g_params.order_by_leverages = true;
+      } else if (par == "USE_INVERSE_SPACE") {
+         ival = atoi(val.c_str());
+         if (ival == 1) g_params.uis = true;
       }
       par = "";
    }

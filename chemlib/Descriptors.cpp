@@ -46,7 +46,8 @@ m_t4b(0),
 m_ngp3sum(0),
 m_svp4(0),
 m_svp4i(0),
-m_ngp4(0) {
+m_ngp4(0),
+m_use_inverse_space(false) {
 }
 
 Descriptors::~Descriptors() {
@@ -118,8 +119,13 @@ void Descriptors::SetGrid(double *dmin, double *dmax) {
       e = 1.0/dmin[i];
       stp = (e - b)/(m_ngp2[i] - 1);
       m_svp2[i] = new double[m_ngp2[i]];
-      for (j=0; j < m_ngp2[i]; j++)
-         m_svp2[i][m_ngp2[i] - j - 1] = 1.0/(b + j*stp);
+      if (m_use_inverse_space) {
+         for (j=0; j < m_ngp2[i]; j++)
+            m_svp2[i][j] = b + j*stp;
+      } else {
+         for (j=0; j < m_ngp2[i]; j++)
+            m_svp2[i][m_ngp2[i] - j - 1] = 1.0/(b + j*stp);
+      }
    }
    for (i = 0, m_ndesc = 0; i < m_nt2; i++) {
       m_t2b[i] = m_ndesc;
@@ -423,7 +429,10 @@ void Descriptors::Calculate(double *r, double *x, int wsi) {
       x1 = r + 3*i;
       for (j = i + 1; j < m_na; j++) {
          x2 = r + 3*j;
-         dist[k] = sqrt(sq_dist(x1, x2, 3));
+         if (m_use_inverse_space)
+            dist[k] = 1.0/sqrt(sq_dist(x1, x2, 3));
+         else
+            dist[k] = sqrt(sq_dist(x1, x2, 3));
          k++;
       }
    }
@@ -678,7 +687,6 @@ void Descriptors::GetIdx(double *d, int *idxs, int tp, int bo) {
                if (fabs(m_svp2[2][idxs[j]]-d[j]) > fabs(m_svp2[2][idxs[j]+1]-d[j])) idxs[j]++;
             }
             break;
-
       }
    }
 }
@@ -698,7 +706,10 @@ void Descriptors::FindClosestMultiplets(double *r, set<int> *pss, set<Triplet, T
       for (j=i+1; j < m_na; j++) {
          tp = m_t2[k];
          x2 = r + 3*j;
-         d2[0] = dist[k] = sqrt(sq_dist(x1, x2, 3));
+         if (m_use_inverse_space)
+            d2[0] = dist[k] = 1.0/sqrt(sq_dist(x1, x2, 3));
+         else
+            d2[0] = dist[k] = sqrt(sq_dist(x1, x2, 3));
          GetIdx(d2, idxsrc, tp, 2);
          idx[0] = idxsrc[0];
          pss[tp].insert(idx[0]);
@@ -929,15 +940,18 @@ bool Descriptors::ReadGridPoints(int idst, const char *fn) {
 
 void Descriptors::AssignGridPoints(int isrc1, int isrc2, int isrc3, int idst) {
    int i1, i2, i3, count, inxt;
-   double d1, d2, d3, hs;
+   double d1, d2, d3, d1o, d2o, d3o, hs;
    for (i1=0,count = 0; i1 < m_ngp2[isrc1]; i1++) {
       d1 = m_svp2[isrc1][i1];
+      if (m_use_inverse_space) d1 = 1.0/d1;
       if (isrc1 == isrc2) inxt = i1; else inxt = 0;
       for (i2=inxt; i2 < m_ngp2[isrc2]; i2++) {
          d2 = m_svp2[isrc2][i2];
+         if (m_use_inverse_space) d2 = 1.0/d2;
          if (isrc2 == isrc3) inxt = i2; else inxt = 0;
          for (i3=inxt; i3 < m_ngp2[isrc3]; i3++) {
             d3 = m_svp2[isrc3][i3];
+            if (m_use_inverse_space) d3 = 1.0/d3;
             hs = 0.5*(d1 + d2 + d3);
             if ((hs - d1) >= 0.0 && (hs - d2) >= 0.0 && (hs - d3) >= 0.0) count++;
          }
@@ -947,16 +961,22 @@ void Descriptors::AssignGridPoints(int isrc1, int isrc2, int isrc3, int idst) {
    m_svp3[idst] = new double[3*count];
    m_svp3i[idst] = new int[3*count];
    for (i1=0,count=0; i1 < m_ngp2[isrc1]; i1++) {
-      d1 = m_svp2[isrc1][i1];
+      d1o = m_svp2[isrc1][i1];
+      if (m_use_inverse_space) d1 = 1.0/d1o;
+      else d1 = d1o;
       if (isrc1 == isrc2) inxt = i1; else inxt = 0;
       for (i2=inxt; i2 < m_ngp2[isrc2]; i2++) {
-         d2 = m_svp2[isrc2][i2];
+         d2o = m_svp2[isrc2][i2];
+         if (m_use_inverse_space) d2 = 1.0/d2o;
+         else d2 = d2o;
          if (isrc2 == isrc3) inxt = i2; else inxt = 0;
          for (i3=inxt; i3 < m_ngp2[isrc3]; i3++) {
-            d3 = m_svp2[isrc3][i3];
+            d3o = m_svp2[isrc3][i3];
+            if (m_use_inverse_space) d3 = 1.0/d3o;
+            else d3 = d3o;
             hs = 0.5*(d1 + d2 + d3);
             if ((hs - d1) >= 0.0 && (hs - d2) >= 0.0 && (hs - d3) >= 0.0) {
-               m_svp3[idst][3*count] = d1; m_svp3[idst][3*count+1] = d2; m_svp3[idst][3*count+2] = d3;
+               m_svp3[idst][3*count] = d1o; m_svp3[idst][3*count+1] = d2o; m_svp3[idst][3*count+2] = d3o;
                m_svp3i[idst][3*count] = i1; m_svp3i[idst][3*count+1] = i2; m_svp3i[idst][3*count+2] = i3;
                count++;
             }
@@ -968,6 +988,7 @@ void Descriptors::AssignGridPoints(int isrc1, int isrc2, int isrc3, int idst) {
 
 void Descriptors::AssignGridPoints(int isrc1, int isrc2, int isrc3, int isrc4, int isrc5, int isrc6, int idst) {
    int i, j, i1, i2, i3, i4, i5, i6, count, gptot, pos, nperm, countkeep;
+   double d[6];
    int *p;
    int orig[6];
    int reordered[6];
@@ -1050,7 +1071,22 @@ void Descriptors::AssignGridPoints(int isrc1, int isrc2, int isrc3, int isrc4, i
                            pos = getposition(reordered, m);
                            if (pos > count) ignore[pos] = true;
                         }
-                        if (IsEmbeddable(m_svp2[isrc1][i1], m_svp2[isrc2][i2], m_svp2[isrc3][i3], m_svp2[isrc4][i4], m_svp2[isrc5][i5], m_svp2[isrc6][i6])) {
+                        if (m_use_inverse_space) {
+                           d[0] = 1.0/m_svp2[isrc1][i1];
+                           d[1] = 1.0/m_svp2[isrc2][i2];
+                           d[2] = 1.0/m_svp2[isrc3][i3];
+                           d[3] = 1.0/m_svp2[isrc4][i4];
+                           d[4] = 1.0/m_svp2[isrc5][i5];
+                           d[5] = 1.0/m_svp2[isrc6][i6];
+                        } else {
+                           d[0] = m_svp2[isrc1][i1];
+                           d[1] = m_svp2[isrc2][i2];
+                           d[2] = m_svp2[isrc3][i3];
+                           d[3] = m_svp2[isrc4][i4];
+                           d[4] = m_svp2[isrc5][i5];
+                           d[5] = m_svp2[isrc6][i6];
+                        }
+                        if (IsEmbeddable(d[0], d[1], d[2], d[3], d[4], d[5])) {
                            countkeep++;
                         } else {
                            ignore[count] = true;
@@ -1206,6 +1242,10 @@ void Descriptors::Get4BGridPoints(set<Sixtuplet, SixtupletCompare> *sss) {
          sss[i].insert(s);
       }
    }
+}
+
+void Descriptors::SetUseInverseSpace(bool val) {
+   m_use_inverse_space = val;
 }
 
 double (*Descriptors::kernel2B)(double, double) = 0;

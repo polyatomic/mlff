@@ -13,6 +13,7 @@ struct PTypeExtended : public PType {
    bool read_descriptors;
    bool build_regression;
    bool order_by_leverages;
+   bool uis;
 };
 
 void RunTasks();

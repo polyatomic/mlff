@@ -32,6 +32,7 @@ public:
    bool ReadGridPoints(int isrc1, int isrc2, int isrc3, int isrc4, int isrc5, int isrc6, int idst, const char *fn);
    void Get3BGridPoints(set<Triplet, TripletCompare> *tss);
    void Get4BGridPoints(set<Sixtuplet, SixtupletCompare> *sss);
+   void SetUseInverseSpace(bool val);
 
    static void SetKernel2B(int kernel_type);
    static void SetKernel3B(int kernel_type);
@@ -67,6 +68,7 @@ private:
    int *m_t4b;       // Descriptor saving boundaries for different quadruplet types
    int m_ngp2sum;    // Number of 2B descriptors
    int m_ngp3sum;    // Number of 2B and 3B descriptors
+   bool m_use_inverse_space;
 
    void ReleaseGrid();
    void GetIdx(double *d, int *idxs, int tp, int bo);
