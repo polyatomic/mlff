@@ -206,7 +206,7 @@ int GetSubType(Quadruplet& q) {
 }
 
 bool calculation_prepare(PType *params, Iterator<Mol>& mols, Descriptors& descs, int& nstr, int& n, double*& v, double*& Y) {
-   double *dmin, *dmax, *rcoords;
+   double *dmin, *dmax, *rcoords, *gsp;
    int *types2, *types3, *stypes3, *types4, *stypes4, *ngp;
    int i, j, k, l, m, o, na, nt1, nt2, nt3, tp, na3, na4, nt4, ii, jj, kk;
    vector<string> tkns, tkns2;
@@ -359,6 +359,7 @@ bool calculation_prepare(PType *params, Iterator<Mol>& mols, Descriptors& descs,
       }
    }
    ngp = new int[nt2];
+   gsp = nullptr;
    tkns = Tokenize(params->ngp, "\r\n");
    if (tkns.size() != nt2) {
       cerr << "Input error reading NUMBER_OF_GRID_POINTS" << endl;
@@ -391,14 +392,25 @@ bool calculation_prepare(PType *params, Iterator<Mol>& mols, Descriptors& descs,
          goto end;
       }
    }
+   gsp = new double[nt2];
+   tkns = Tokenize(params->gsp, "\r\n");
+   if (tkns.size() != nt2) {
+      cerr << "Input error reading GRID_START_POINTS" << endl;
+      res = false;
+      goto end;
+   }
+   for (i = 0; i < nt2; i++)
+      gsp[i] = atof(tkns[i].c_str());
    cout << "Atom type pairs, minimum and maximum distances, max-min and number of grid points:" << endl;
    for (i = 0; i < nt2; i++)
       cout << Atom::GetAtomicSymbol(t2[i].v[0]) << " " << Atom::GetAtomicSymbol(t2[i].v[1]) << " " << setprecision(prec) << dmin[i] << " " << dmax[i] << " " << setprecision(oldprec) << dmax[i] - dmin[i] << " " << ngp[i] << endl;
-   descs.SetGrid(dmin, dmax);
+   cout << "Grid step size (inverse): " << params->gss << endl;
+   descs.SetGrid(dmin, dmax, gsp, params->gss);
    Descriptors::SetKernel2B(params->kernel_2b);
    Descriptors::SetKernel3B(params->kernel_3b);
    Descriptors::SetKernel4B(params->kernel_4b);
 end:
+   delete [] gsp;
    delete [] ngp;
    delete [] stypes4;
    delete [] types4;

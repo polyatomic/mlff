@@ -17,6 +17,7 @@ PTypeExtended g_params;
 
 bool ReadParams(const char *fn) {
    int ival;
+   double dval;
    size_t len, startpos;
    bool res, bt;
    string line, par, val;
@@ -38,6 +39,7 @@ bool ReadParams(const char *fn) {
    g_params.kernel_4b = 0;
    g_params.nsketch = 0;
    g_params.uis = false;
+   g_params.gss = 0.0;
    for (;;) {
       if (ifile.eof()) break;
       getline(ifile, line, '\n');
@@ -85,6 +87,11 @@ bool ReadParams(const char *fn) {
          g_params.dist = val;
       } else if (par == "NUMBER_OF_GRID_POINTS") {
          g_params.ngp = val;
+      } else if (par == "GRID_START_POINTS") {
+         g_params.gsp = val;
+      } else if (par == "GRID_STEP_SIZE") {
+         dval =  atof(val.c_str());
+         g_params.gss = dval;
       } else if (par == "PRESELECT_DESCRIPTORS") {
          ival = atoi(val.c_str());
          if (ival == 1) g_params.preselect_descriptors = true;

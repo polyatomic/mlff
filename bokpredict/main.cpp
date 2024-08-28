@@ -73,6 +73,11 @@ bool ReadParams(const char *fn) {
          g_params.t4 = val;
       } else if (par == "NUMBER_OF_GRID_POINTS") {
          g_params.ngp = val;
+      } else if (par == "GRID_START_POINTS") {
+         g_params.gsp = val;
+      } else if (par == "GRID_STEP_SIZE") {
+         dval =  atof(val.c_str());
+         g_params.gss = dval;
       } else if (par == "N_THREADS") {
          ival = atoi(val.c_str());
          g_params.nthreads = ival;

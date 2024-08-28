@@ -17,7 +17,7 @@ public:
    Descriptors();
    ~Descriptors();
    bool Init(int na, int nt2, int *t2, int nt3, int *st3, int *t3, int nt4, int *st4, int *t4, int *ngp, int nthreads = 1);
-   void SetGrid(double *dmin, double *dmax);
+   void SetGrid(double *dmin, double *dmax, double *gmin, double step_size);
    int GetNDescriptors();
    int GetN2BDescriptors(int type = -1);
    int GetN3BDescriptors(int type = -1);

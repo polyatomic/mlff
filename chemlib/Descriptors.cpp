@@ -108,16 +108,18 @@ bool Descriptors::Init(int na, int nt2, int *t2, int nt3, int *st3, int *t3, int
    return true;
 }
 
-void Descriptors::SetGrid(double *dmin, double *dmax) {
+void Descriptors::SetGrid(double *dmin, double *dmax, double *gmin, double step_size) {
    int i, j, dif;
-   double b, e, stp;
+   double b, stp;
    ReleaseGrid();
    m_svp2 = new double*[m_nt2];
    for (i=0; i < m_nt2; i++) m_svp2[i] = 0;
+   stp = step_size;
    for (i=0; i < m_nt2; i++) {
-      b = 1.0/dmax[i];
-      e = 1.0/dmin[i];
-      stp = (e - b)/(m_ngp2[i] - 1);
+      //b = 1.0/dmax[i];
+      //e = 1.0/dmin[i];
+      //stp = (e - b)/(m_ngp2[i] - 1);
+      b = gmin[i];
       m_svp2[i] = new double[m_ngp2[i]];
       if (m_use_inverse_space) {
          for (j=0; j < m_ngp2[i]; j++)

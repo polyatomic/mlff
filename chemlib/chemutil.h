@@ -16,12 +16,14 @@ struct PType {
    string t3;
    string t4;
    string ngp;
+   string gsp;
    string eFile;
    string dist;
    int kernel_2b;
    int kernel_3b;
    int kernel_4b;
    int nthreads;
+   double gss;
 };
 
 Iterator<Mol> ReadXYZFile(const char* fileName);
