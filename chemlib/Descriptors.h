@@ -71,6 +71,7 @@ private:
    bool m_use_inverse_space;
 
    void ReleaseGrid();
+   int GetPos(double *v, int n, double val);
    void GetIdx(double *d, int *idxs, int tp, int bo);
 
    static double (*kernel2B)(double, double);

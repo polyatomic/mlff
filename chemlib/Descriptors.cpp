@@ -497,88 +497,45 @@ void Descriptors::Calculate(double *r, double *x, int wsi) {
    }
 }
 
+// Return closest position in 1D grid v to val
+int Descriptors::GetPos(double *v, int n, double val) {
+   auto lower = std::lower_bound(v, v+n, val);
+   if (lower == v+n)
+      return n-1;
+   auto p = lower - v;
+   if (p == 0)
+      return 0;
+   if ((*lower) - val < val - v[p-1])
+      return p;
+   return p - 1;
+}
+
 void Descriptors::GetIdx(double *d, int *idxs, int tp, int bo) {
-   int i, j;
+   int j;
    if (bo == 2) {
-      idxs[0] = m_ngp2[tp] - 2;
-      for (i = 0; i < m_ngp2[tp]; i++) {
-         if (d[0] < m_svp2[tp][i]) {
-            idxs[0] = i-1;
-            break;
-         }
-      }
-      if (idxs[0] < 0) idxs[0] = 0;
-      if (fabs(m_svp2[tp][idxs[0]] - d[0]) > fabs(m_svp2[tp][idxs[0]+1] - d[0])) idxs[0]++;
+      idxs[0] = GetPos(m_svp2[tp], m_ngp2[tp], d[0]);
    } else if (bo == 3) {
       switch (tp) {
          case 0:
             for (j = 0; j < 3; j++) {
-               idxs[j] = m_ngp2[0] - 2;
-               for (i = 0; i < m_ngp2[0]; i++) {
-                  if (d[j] < m_svp2[0][i]) {
-                     idxs[j] = i-1;
-                     break;
-                  }
-               }
-               if (idxs[j] < 0) idxs[j] = 0;
-               if (fabs(m_svp2[0][idxs[j]] - d[j]) > fabs(m_svp2[0][idxs[j]+1] - d[j])) idxs[j]++;
+               idxs[j] = GetPos(m_svp2[0], m_ngp2[0], d[j]);
             }
             break;
          case 1:
             for (j = 0; j < 2; j++) {
-               idxs[j] = m_ngp2[1] - 2;
-               for (i = 0; i < m_ngp2[1]; i++) {
-                  if (d[j] < m_svp2[1][i]) {
-                     idxs[j] = i-1;
-                     break;
-                  }
-               }
-               if (idxs[j] < 0) idxs[j] = 0;
-               if (fabs(m_svp2[1][idxs[j]] - d[j]) > fabs(m_svp2[1][idxs[j]+1] - d[j])) idxs[j]++;
+               idxs[j] = GetPos(m_svp2[1], m_ngp2[1], d[j]);
             }
-            idxs[2] = m_ngp2[2] - 2;
-            for (i = 0; i < m_ngp2[2]; i++) {
-               if (d[2] < m_svp2[2][i]) {
-                  idxs[2] = i-1;
-                  break;
-               }
-            }
-            if (idxs[2] < 0) idxs[2] = 0;
-            if (fabs(m_svp2[2][idxs[2]] - d[2]) > fabs(m_svp2[2][idxs[2]+1] - d[2])) idxs[2]++;
+            idxs[j] = GetPos(m_svp2[2], m_ngp2[2], d[2]);
             break;
          case 2:
             for (j = 0; j < 2; j++) {
-               idxs[j] = m_ngp2[1] - 2;
-               for (i = 0; i < m_ngp2[1]; i++) {
-                  if (d[j] < m_svp2[1][i]) {
-                     idxs[j] = i-1;
-                     break;
-                  }
-               }
-               if (idxs[j] < 0) idxs[j] = 0;
-               if (fabs(m_svp2[1][idxs[j]] - d[j]) > fabs(m_svp2[1][idxs[j]+1] - d[j])) idxs[j]++;
+               idxs[j] = GetPos(m_svp2[1], m_ngp2[1], d[j]);
             }
-            idxs[2] = m_ngp2[0] - 2;
-            for (i = 0; i < m_ngp2[0]; i++) {
-               if (d[2] < m_svp2[0][i]) {
-                  idxs[2] = i-1;
-                  break;
-               }
-            }
-            if (idxs[2] < 0) idxs[2] = 0;
-            if (fabs(m_svp2[0][idxs[2]] - d[2]) > fabs(m_svp2[0][idxs[2]+1] - d[2])) idxs[2]++;
+            idxs[2] = GetPos(m_svp2[0], m_ngp2[0], d[2]);
             break;
          case 3:
             for (j = 0; j < 3; j++) {
-               idxs[j] = m_ngp2[2] - 2;
-               for (i = 0; i < m_ngp2[2]; i++) {
-                  if (d[j] < m_svp2[2][i]) {
-                     idxs[j] = i-1;
-                     break;
-                  }
-               }
-               if (idxs[j] < 0) idxs[j] = 0;
-               if (fabs(m_svp2[2][idxs[j]] - d[j]) > fabs(m_svp2[2][idxs[j]+1] - d[j])) idxs[j]++;
+               idxs[j] = GetPos(m_svp2[2], m_ngp2[2], d[j]);
             }
             break;
       }
@@ -586,107 +543,35 @@ void Descriptors::GetIdx(double *d, int *idxs, int tp, int bo) {
       switch (tp) {
          case 0:
             for (j = 0; j < 6; j++) {
-               idxs[j] = m_ngp2[0] - 2;
-               for (i = 0; i < m_ngp2[0]; i++) {
-                  if (d[j] < m_svp2[0][i]) {
-                     idxs[j] = i-1;
-                     break;
-                  }
-               }
-               if (idxs[j] < 0) idxs[j] = 0;
-               if (fabs(m_svp2[0][idxs[j]]-d[j]) > fabs(m_svp2[0][idxs[j]+1]-d[j])) idxs[j]++;
+               idxs[j] = GetPos(m_svp2[0], m_ngp2[0], d[j]);
             }
             break;
          case 1:
             for (j = 0; j < 3; j++) {
-               idxs[j] = m_ngp2[1] - 2;
-               for (i = 0; i < m_ngp2[1]; i++) {
-                  if (d[j] < m_svp2[1][i]) {
-                     idxs[j] = i-1;
-                     break;
-                  }
-               }
-               if (idxs[j] < 0) idxs[j] = 0;
-               if (fabs(m_svp2[1][idxs[j]]-d[j]) > fabs(m_svp2[1][idxs[j]+1]-d[j])) idxs[j]++;
+               idxs[j] = GetPos(m_svp2[1], m_ngp2[1], d[j]);
             }
             for (j = 3; j < 6; j++) {
-               idxs[j] = m_ngp2[2] - 2;
-               for (i = 0; i < m_ngp2[2]; i++) {
-                  if (d[j] < m_svp2[2][i]) {
-                     idxs[j] = i-1;
-                     break;
-                  }
-               }
-               if (idxs[j] < 0) idxs[j] = 0;
-               if (fabs(m_svp2[2][idxs[j]]-d[j]) > fabs(m_svp2[2][idxs[j]+1]-d[j])) idxs[j]++;
+               idxs[j] = GetPos(m_svp2[2], m_ngp2[2], d[j]);
             }
             break;
          case 2:
             for (j = 0; j < 3; j++) {
-               idxs[j] = m_ngp2[1] - 2;
-               for (i = 0; i < m_ngp2[1]; i++) {
-                  if (d[j] < m_svp2[1][i]) {
-                     idxs[j] = i-1;
-                     break;
-                  }
-               }
-               if (idxs[j] < 0) idxs[j] = 0;
-               if (fabs(m_svp2[1][idxs[j]]-d[j]) > fabs(m_svp2[1][idxs[j]+1]-d[j])) idxs[j]++;
+               idxs[j] = GetPos(m_svp2[1], m_ngp2[1], d[j]);
             }
             for (j = 3; j < 6; j++) {
-               idxs[j] = m_ngp2[0] - 2;
-               for (i = 0; i < m_ngp2[0]; i++) {
-                  if (d[j] < m_svp2[0][i]) {
-                     idxs[j] = i-1;
-                     break;
-                  }
-               }
-               if (idxs[j] < 0) idxs[j] = 0;
-               if (fabs(m_svp2[0][idxs[j]]-d[j]) > fabs(m_svp2[0][idxs[j]+1]-d[j])) idxs[j]++;
+               idxs[j] = GetPos(m_svp2[0], m_ngp2[0], d[j]);
             }
             break;
          case 3:
-            idxs[0] = m_ngp2[0] - 2;
-            for (i = 0; i < m_ngp2[0]; i++) {
-               if (d[0] < m_svp2[0][i]) {
-                  idxs[0] = i-1;
-                  break;
-               }
-            }
-            if (idxs[0] < 0) idxs[0] = 0;
-            if (fabs(m_svp2[0][idxs[0]]-d[0]) > fabs(m_svp2[0][idxs[0]+1]-d[0])) idxs[0]++;
+            idxs[0] = GetPos(m_svp2[0], m_ngp2[0], d[0]);
             for (j = 1; j < 5; j++) {
-               idxs[j] = m_ngp2[1] - 2;
-               for (i = 0; i < m_ngp2[1]; i++) {
-                  if (d[j] < m_svp2[1][i]) {
-                     idxs[j] = i-1;
-                     break;
-                  }
-               }
-               if (idxs[j] < 0) idxs[j] = 0;
-               if (fabs(m_svp2[1][idxs[j]]-d[j]) > fabs(m_svp2[1][idxs[j]+1]-d[j])) idxs[j]++;
+               idxs[j] = GetPos(m_svp2[1], m_ngp2[1], d[j]);
             }
-            idxs[5] = m_ngp2[2] - 2;
-            for (i = 0; i < m_ngp2[2]; i++) {
-               if (d[5] < m_svp2[2][i]) {
-                  idxs[5] = i-1;
-                  break;
-               }
-            }
-            if (idxs[5] < 0) idxs[5] = 0;
-            if (fabs(m_svp2[2][idxs[5]]-d[5]) > fabs(m_svp2[2][idxs[5]+1]-d[5])) idxs[5]++;
+            idxs[5] = GetPos(m_svp2[2], m_ngp2[2], d[5]);
             break;
          case 4:
             for (j = 0; j < 6; j++) {
-               idxs[j] = m_ngp2[2] - 2;
-               for (i = 0; i < m_ngp2[2]; i++) {
-                  if (d[j] < m_svp2[2][i]) {
-                     idxs[j] = i-1;
-                     break;
-                  }
-               }
-               if (idxs[j] < 0) idxs[j] = 0;
-               if (fabs(m_svp2[2][idxs[j]]-d[j]) > fabs(m_svp2[2][idxs[j]+1]-d[j])) idxs[j]++;
+               idxs[j] = GetPos(m_svp2[2], m_ngp2[2], d[j]);
             }
             break;
       }
