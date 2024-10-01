@@ -8,6 +8,10 @@ using std::vector;
 
 struct Pair {
    int v[2];
+
+   bool operator==(const Pair& p) {
+      return (p.v[0] == v[0] && p.v[1] == v[1]);
+   }
 };
 
 struct PairCompare {

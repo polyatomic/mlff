@@ -236,6 +236,8 @@ bool calculate_descriptors(int N, int M, int olength, double *r, FunctorDaDaI *d
       matcount++;
    }
    ofile.close();
+   cerr << "Press enter to continue:";
+   std::cin.get();
    fn = "descst.bin";
    ofile.open(fn.c_str(), ios::out | ios::binary);
    nr = M;
@@ -302,7 +304,7 @@ bool order_by_leverages(int N, int M, double *wmatc, int *ids_selected, double *
    cout << "#####   Starting order_by_leverages   #####\n";
    cout << "Number of rows: " << N << endl;
    cout << "Number of basis functions: " << M << endl;
-   wmatct = new double[M*N];
+   wmatct = new double[((long long)M)*N];
    Kd = new double[M*M];
    evec = new double[M*M];
    eval = new double[M];
@@ -315,7 +317,7 @@ bool order_by_leverages(int N, int M, double *wmatc, int *ids_selected, double *
    for (i = 0; i < M; i++) {
       iM = i*M;
       for (j = i; j < M; j++) {
-         Kd[iM+j] += dot_prod(wmatct + i*N, wmatct + j*N, N);
+         Kd[iM+j] += dot_prod(wmatct + ((long long)i)*N, wmatct + ((long long)j)*N, N);
       }
    }
    for (i = 1; i < M; i++) {
@@ -347,7 +349,7 @@ bool order_by_leverages(int N, int M, double *wmatc, int *ids_selected, double *
       for (j=0; j < M; j++) dp1[j] = dp2[j]/ss;
    }
    for (i = 0; i < N; i++) {
-      MatByVec(levmat, wmatc+i*M, wwp, rank, M);
+      MatByVec(levmat, wmatc+((long long)i)*M, wwp, rank, M);
       leverages[i] = dot_prod(wwp, wwp, rank);
    }
    auto rule = [leverages](int i, int j) -> bool { return leverages[i] > leverages[j]; };
@@ -389,6 +391,7 @@ bool order_by_leverages(int N, int M[], int nsub, const char *wmatc_name, const 
    double **wmatct = 0;
    double **Kd = 0;
    bool next_init = false;
+   bool res = true;
    set<int> ids;
    map<int, int> matm, matmr;
    vector<int> ids1, ids2;
@@ -397,9 +400,8 @@ bool order_by_leverages(int N, int M[], int nsub, const char *wmatc_name, const 
    if (nthreads > 1) cout << "Using " << nthreads << " threads" << endl;
    cout << "Buffer size: " << bufsize << endl;
    cout << "Number of rows: " << N << endl;
-   ifstream ifile(wmatc_name, ios::in | ios::binary);
    ifstream ifilet(wmatct_name, ios::in | ios::binary);
-   if (!ifile || !ifilet) return false;
+   if (!ifilet) return false;
    Kd = new double*[nsub];
    wmatct = new double*[nthreads+1];
    ntot = 0;
@@ -513,6 +515,7 @@ bool order_by_leverages(int N, int M[], int nsub, const char *wmatc_name, const 
          if (rowsum == ntotsub) break;
       }
    }
+   ifilet.close();
    for (k = 0; k < nsub; k++) {
       Ms = M[k];
       Kds = Kd[k];
@@ -529,6 +532,11 @@ bool order_by_leverages(int N, int M[], int nsub, const char *wmatc_name, const 
    wwp = new double*[nthreads];
    for (i = 0; i < nthreads; i++) wwp[i] = new double[Ms_max];
    tsizes = new int[nthreads];
+   ifstream ifile(wmatc_name, ios::in | ios::binary);
+   if (!ifile) {
+      res = false;
+      goto end;
+   }
    start = 0;
    for (k=0; k < nsub; k++) {
       Ms = M[k];
@@ -594,7 +602,7 @@ bool order_by_leverages(int N, int M[], int nsub, const char *wmatc_name, const 
    }
    cout << "#####   Finished order_by_leverages   #####\n";
    ifile.close();
-   ifilet.close();
+end:
    delete [] tsizes;
    for (i=0; i < nthreads; i++) delete [] wwp[i];
    delete [] wwp;
@@ -608,7 +616,7 @@ bool order_by_leverages(int N, int M[], int nsub, const char *wmatc_name, const 
    for (i=0; i < nsub; i++) delete [] Kd[i];
    delete [] wmatct;
    delete [] Kd;
-   return true;
+   return res;
 }
 
 // Select columns of nrows x ncols matrix X that are least correlated with each other and with the columns of nrows x ncols2 matrix X2
@@ -875,7 +883,7 @@ void sketch_matrix(int nrows, int ncols, int ncols_retain, const double *X, cons
 // n_test_rows - number of rows to select from each block
 // nthreads - number of threads to use
 // selected_variables
-void sketch_matrices(int N, int M[], int nsub, const char *wmatc_name, int *ids_selected[], int ranks[], int n_test_rows, int nthreads, int *selected_variables[]) {
+void sketch_matrices(int N, int M[], int nblocks[], int nsub, const char *wmatc_name, int *ids_selected[], int ranks[], int n_test_rows, int nthreads, int *selected_variables[]) {
    int i, j, k, Mtot, ranktot, maxcols, mat_id, nr, nc, r_skip1, nrows, n_selected_total, r_skip2, ncols, ncolsprev, ncolsnew, ncolsprevupd, nsel;
    long long il;
    int *ids_selected_total_cp, *idit, *ids_selectedo, *ids_selected_total;
@@ -893,8 +901,8 @@ void sketch_matrices(int N, int M[], int nsub, const char *wmatc_name, int *ids_
    ifstream ifile(wmatc_name, ios::in | ios::binary);
    if (!ifile) return;
    ids_selectedo = new int[n_test_rows];
-   ids_selected_total = new int[12*n_test_rows];
-   ids_selected_total_cp = new int[12*n_test_rows];
+   ids_selected_total = new int[nsub*n_test_rows];
+   ids_selected_total_cp = new int[nsub*n_test_rows];
    ifile.read((char*)&nr, sizeof(int));
    ifile.read((char*)&nc, sizeof(int));
    nrows = n_test_rows;
@@ -936,7 +944,7 @@ void sketch_matrices(int N, int M[], int nsub, const char *wmatc_name, int *ids_
       if (mat_id == 0) {
          for (il=0; il < ((long long)ncols)*nrows; il++) Xprevupd[il] = X[il];
          ncolsprevupd = ncols;
-      } else if (mat_id < 3) {
+      } else if (mat_id < nblocks[0]) {
          ncolsnew = ncolsprevupd + ncols;
          for (il = 0; il < ((long long)nrows)*ncolsprevupd; il++) Xtmp[il] = Xprevupd[il];
          for (i = 0; i < nrows; i++) {
@@ -947,7 +955,7 @@ void sketch_matrices(int N, int M[], int nsub, const char *wmatc_name, int *ids_
                Xprevupd[i*((long long)ncolsnew)+ncolsprevupd+j] = X[((long long)i)*ncols+j];
             }
          }
-         if (mat_id == 2) {
+         if (mat_id == nblocks[0]-1) {
             for (il=0; il < ((long long)ncolsnew)*nrows; il++) Xprev[il] = Xprevupd[il];
             ncolsprev = ncolsnew;
          }
@@ -973,7 +981,7 @@ void sketch_matrices(int N, int M[], int nsub, const char *wmatc_name, int *ids_
                Xprevupd[i*((long long)ncolsnew)+ncolsprevupd+j] = X[i*((long long)ncols)+selected_variables[mat_id][j]];
             }
          }
-         if (mat_id == 6) {
+         if (mat_id == nblocks[0]+nblocks[1]-1) {
             for (il = 0; il < ncolsnew*((long long)nrows); il++) Xprev[il] = Xprevupd[il];
             ncolsprev = ncolsnew;
          }
@@ -1143,7 +1151,7 @@ bool build_regression(int N, int M[], int Mtot, int nsub, const char *wmatc_name
    cout << "Size of training set: " << n_training << endl;
    isel = new int[N];
    lev = new double[N];
-   wmatc = new double[Mtot*N];
+   wmatc = new double[((long long)Mtot)*N];
    File2Matrix(wmatc_name, nr, nc, wmatc);
    order_by_leverages(N, Mtot, wmatc, isel, lev);
    for (i=0; i < n_training; i++) ids_training[i] = isel[i];

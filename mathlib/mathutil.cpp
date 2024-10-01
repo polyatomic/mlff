@@ -132,6 +132,11 @@ double symmetrized_kernel3_1(double *x1, double *x2, double (*kernel)(double, do
    return ret;
 }
 
+// (Un)symmetrized 3D kernel for ABC system.
+double symmetrized_kernel3_2(double *x1, double *x2, double (*kernel)(double, double)) {
+   return kernel(x1[0], x2[0])*kernel(x1[1], x2[1])*kernel(x1[2], x2[2]);
+}
+
 // Symmetrized 4D kernel for AAAA system.
 double symmetrized_kernel4_0(double *x1, double *x2, double (*kernel)(double, double)) {
    double ret, k00, k11, k22, k33, k44, k55, k12, k21, k34, k43, k01, k10, k45, k54, k20, k35, k02, k53,
@@ -240,6 +245,15 @@ double symmetrized_kernel4_2(double *x1, double *x2, double (*kernel)(double, do
    return ret;
 }
 
+// Symmetrized 4D kernel for ABCC system.
+double symmetrized_kernel4_3(double *x1, double *x2, double (*kernel)(double, double)) {
+   double ret;
+   ret = kernel(x1[0], x2[0])*kernel(x1[5], x2[5])*
+         (kernel(x1[1], x2[1])*kernel(x1[2], x2[2])*kernel(x1[3], x2[3])*kernel(x1[4], x2[4]) +
+          kernel(x1[1], x2[2])*kernel(x1[2], x2[1])*kernel(x1[3], x2[4])*kernel(x1[4], x2[3]));
+   return ret;
+}
+
 void scale(const double *mat, int m, int n, double *cmat, double *avgs, double *stdevs) {
    int i, j;
    double avg, stdev;
@@ -264,11 +278,12 @@ void scale(const double *mat, int m, int n, double *cmat, double *avgs, double *
 }
 
 void transpose(const double *mat_in, double *mat_out, int m, int n) {
-   int i, j, in;
+   int i, j;
+   long long in;
    for (i = 0; i < m; i++) {
-      in = i*n;
+      in = ((long long)i)*n;
       for (j = 0; j < n; j++) {
-         mat_out[j*m+i] = mat_in[in+j];
+         mat_out[((long long)j)*m+i] = mat_in[in+j];
       }
    }
 }
@@ -279,6 +294,10 @@ double dot_prod(const double *v1, const double *v2, int n) {
    double ret = 0.0;
    for (i = 0; i < n; i++) ret += v1[i]*v2[i];
    return ret;
+}
+
+double dot_prod_blas(const double *v1, const double *v2, int n) {
+   return cblas_ddot(n, v1, 1, v2, 1);
 }
 
 // Dot product of n-dim vectors with Kahan summation

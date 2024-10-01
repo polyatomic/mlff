@@ -47,6 +47,8 @@ m_ngp3sum(0),
 m_svp4(0),
 m_svp4i(0),
 m_ngp4(0),
+m_pt3(0),
+m_pt4(0),
 m_use_inverse_space(false) {
 }
 
@@ -61,10 +63,12 @@ Descriptors::~Descriptors() {
    delete [] m_t4;
    delete [] m_st4;
    delete [] m_t4b;
+   delete [] m_pt3;
+   delete [] m_pt4;
    ReleaseGrid();
 }
 
-bool Descriptors::Init(int na, int nt2, int *t2, int nt3, int *st3, int *t3, int nt4, int *st4, int *t4, int *ngp, int nthreads) {
+bool Descriptors::Init(int na, int nt2, int *t2, int nt3, int *st3, int *t3, int *pt3, int nt4, int *st4, int *t4, int *pt4, int *ngp, int nthreads) {
    int i;
    ReleaseGrid();
    if (!t2) {
@@ -92,6 +96,9 @@ bool Descriptors::Init(int na, int nt2, int *t2, int nt3, int *st3, int *t3, int
    delete [] m_st3;
    m_st3 = new int[nt3];
    for (i=0; i < nt3; i++) m_st3[i] = st3[i];
+   delete [] m_pt3;
+   m_pt3 = new int[3*nt3];
+   for (i=0; i < 3*nt3; i++) m_pt3[i] = pt3[i];
    delete [] m_t3b;
    m_t3b = new int[nt3];
    m_nt4 = nt4;
@@ -103,13 +110,17 @@ bool Descriptors::Init(int na, int nt2, int *t2, int nt3, int *st3, int *t3, int
    delete [] m_st4;
    m_st4 = new int[nt4];
    for (i=0; i < nt4; i++) m_st4[i] = st4[i];
+   delete [] m_pt4;
+   m_pt4 = new int[6*nt4];
+   for (i=0; i < 6*nt4; i++) m_pt4[i] = pt4[i];
    delete [] m_t4b;
    m_t4b = new int[nt4];
    return true;
 }
 
-void Descriptors::SetGrid(double *dmin, double *dmax, double *gmin, double step_size) {
+void Descriptors::SetGrid(double *dmin, double *dmax, double *gmin, double step_size, const char *blocks, int *sym) {
    int i, j, dif;
+   int *p;
    double b, stp;
    ReleaseGrid();
    m_svp2 = new double*[m_nt2];
@@ -140,10 +151,10 @@ void Descriptors::SetGrid(double *dmin, double *dmax, double *gmin, double step_
    m_svp3i = new int*[m_nt3];
    for (i=0; i < m_nt3; i++) m_svp3i[i] = 0;
    m_ngp3 = new int[m_nt3];
-   if (!ReadGridPoints(0, 0, 0, 0, "g30.txt")) AssignGridPoints(0, 0, 0, 0);
-   if (!ReadGridPoints(1, 1, 2, 1, "g31.txt")) AssignGridPoints(1, 1, 2, 1);
-   if (!ReadGridPoints(1, 1, 0, 2, "g32.txt")) AssignGridPoints(1, 1, 0, 2);
-   if (!ReadGridPoints(2, 2, 2, 3, "g33.txt")) AssignGridPoints(2, 2, 2, 3);
+   for (i = 0; i < m_nt3; i++) {
+      p = m_pt3 + 3*i;
+      if (!ReadGridPoints(p[0], p[1], p[2], i, (string(blocks+4*(m_nt2+i)) + ".txt").c_str())) AssignGridPoints(p[0], p[1], p[2], i);
+   }
    for (i=0,j=0; i < m_nt3; i++) {
       m_t3b[i] = j;
       j += m_ngp3[i];
@@ -156,20 +167,20 @@ void Descriptors::SetGrid(double *dmin, double *dmax, double *gmin, double step_
    m_svp4i = new int*[m_nt4];
    for (i=0; i < m_nt4; i++) m_svp4i[i] = 0;
    m_ngp4 = new int[m_nt4];
-   if (!ReadGridPoints(0, 0, 0, 0, 0, 0, 0, "g40.txt")) AssignGridPoints(0, 0, 0, 0, 0, 0, 0);
-   if (!ReadGridPoints(1, 1, 1, 2, 2, 2, 1, "g41.txt")) AssignGridPoints(1, 1, 1, 2, 2, 2, 1);
-   if (!ReadGridPoints(1, 1, 1, 0, 0, 0, 2, "g42.txt")) AssignGridPoints(1, 1, 1, 0, 0, 0, 2);
-   if (!ReadGridPoints(0, 1, 1, 1, 1, 2, 3, "g43.txt")) AssignGridPoints(0, 1, 1, 1, 1, 2, 3);
-   if (!ReadGridPoints(2, 2, 2, 2, 2, 2, 4, "g44.txt")) AssignGridPoints(2, 2, 2, 2, 2, 2, 4);
+   for (i = 0; i < m_nt4; i++) {
+      p = m_pt4 + 6*i;
+      // TODO: Remove sym and induce it from m_st4
+      if (!ReadGridPoints(p[0], p[1], p[2], p[3], p[4], p[5], i, (string(blocks+4*(m_nt2+m_nt3+i)) + ".txt").c_str())) AssignGridPoints(p[0], p[1], p[2], p[3], p[4], p[5], i, sym[i]);
+   }
    for (i = 0, j = 0; i < m_nt4; i++) {
       m_t4b[i] = j;
       j += m_ngp4[i];
    }
    m_ndesc += j;
 end:
-   ReadGridPoints(0, "g20.txt");
-   ReadGridPoints(1, "g21.txt");
-   ReadGridPoints(2, "g22.txt");
+   for (i = 0; i < m_nt2; i++) {
+      ReadGridPoints(i, (string(blocks+4*i) + ".txt").c_str());
+   }
    for (i = 0, j = 0; i < m_nt2; i++) {
       m_t2b[i] = j;
       j += m_ngp2[i];
@@ -185,50 +196,26 @@ int Descriptors::GetNDescriptors() {
 }
 
 int Descriptors::GetN2BDescriptors(int type) {
-   switch (type) {
-      case 0:
-         return m_t2b[1];
-      case 1:
-         return m_t2b[2] - m_t2b[1];
-      case 2:
-         return m_ngp2sum - m_t2b[2];
-      default:
-         return m_ngp2sum;
-   }
+   if (type < 0) return m_ngp2sum;
+   if (type == 0) return m_t2b[1];
+   if (type == m_nt2-1) return m_ngp2sum - m_t2b[type];
+   return m_t2b[type+1] - m_t2b[type];
 }
 
 int Descriptors::GetN3BDescriptors(int type) {
    if (!m_nt3) return 0;
-   switch (type) {
-      case 0:
-         return m_t3b[1];
-      case 1:
-         return m_t3b[2] - m_t3b[1];
-      case 2:
-         return m_t3b[3] - m_t3b[2];
-      case 3:
-         return m_ngp3sum - m_ngp2sum - m_t3b[3];
-      default:
-         return m_ngp3sum - m_ngp2sum;
-   }
+   if (type < 0) return m_ngp3sum - m_ngp2sum;
+   if (type == 0) return m_t3b[1];
+   if (type == m_nt3-1) return m_ngp3sum - m_ngp2sum - m_t3b[type];
+   return m_t3b[type+1] - m_t3b[type];
 }
 
 int Descriptors::GetN4BDescriptors(int type) {
    if (!m_nt4) return 0;
-   switch (type) {
-      case 0:
-         return m_t4b[1];
-      case 1:
-         return m_t4b[2] - m_t4b[1];
-      case 2:
-         return m_t4b[3] - m_t4b[2];
-      case 3:
-         return m_t4b[4] - m_t4b[3];
-      case 4:
-         return m_ndesc - m_ngp3sum - m_t4b[4];
-      default:
-         return m_ndesc - m_ngp3sum;
-   }
+   if (type < 0) return m_ndesc - m_ngp3sum;
+   if (type == 0) return m_t4b[1];
+   if (type == m_nt4-1) return m_ndesc - m_ngp3sum - m_t4b[type];
+   return m_t4b[type+1] - m_t4b[type];
 }
 
 void Descriptors::GetDistanceRanges(double *r, double *dmin, double *dmax) {
@@ -412,19 +399,37 @@ bool Descriptors::IsEmbeddable(double d1, double d2, double d3, double d4, doubl
    return true;
 }
 
+void Descriptors::reorder_idx(int idxsrc[], int idx[], int nperm, int perm[][6]) {
+   int i, j;
+   int *p;
+   SixtupletCompare sc;
+   Sixtuplet s_best, s;
+   for (i=0; i < 6; i++) s_best.v[i] = idxsrc[i];
+   for (i = 1; i < nperm; i++) {
+      p = perm[i];
+      for (j=0; j < 6; j++) s.v[j] = idxsrc[p[j]];
+      if (sc(s, s_best)) {
+         for (j=0; j < 6; j++) s_best.v[j] = s.v[j];
+      }
+   }
+   for (i=0; i < 6; i++) idx[i] = s_best.v[i];
+}
+
 void Descriptors::Calculate(double *r, double *x, int wsi) {
    int i, j, k, l, tp, tpb, i1, i2, i3, i4;
    int *dloc;
    double *x1, *x2, *dist, *xp;
    double d1[6];
    double d2[6];
-   double (*symmetrized_kernels3[2])(double*, double*, double(*)(double, double));
+   double (*symmetrized_kernels3[3])(double*, double*, double(*)(double, double));
    symmetrized_kernels3[0] = symmetrized_kernel3_0;
    symmetrized_kernels3[1] = symmetrized_kernel3_1;
-   double (*symmetrized_kernels4[3])(double*, double*, double(*)(double, double));
+   symmetrized_kernels3[2] = symmetrized_kernel3_2;
+   double (*symmetrized_kernels4[4])(double*, double*, double(*)(double, double));
    symmetrized_kernels4[0] = symmetrized_kernel4_0;
    symmetrized_kernels4[1] = symmetrized_kernel4_1;
    symmetrized_kernels4[2] = symmetrized_kernel4_2;
+   symmetrized_kernels4[3] = symmetrized_kernel4_3;
    dist = m_dist + wsi*m_na2;
    for (i=0; i < m_ndesc; i++) x[i] = 0.0;
    for (i = 0, k = 0; i < m_na-1; i++) {
@@ -515,71 +520,18 @@ void Descriptors::GetIdx(double *d, int *idxs, int tp, int bo) {
    if (bo == 2) {
       idxs[0] = GetPos(m_svp2[tp], m_ngp2[tp], d[0]);
    } else if (bo == 3) {
-      switch (tp) {
-         case 0:
-            for (j = 0; j < 3; j++) {
-               idxs[j] = GetPos(m_svp2[0], m_ngp2[0], d[j]);
-            }
-            break;
-         case 1:
-            for (j = 0; j < 2; j++) {
-               idxs[j] = GetPos(m_svp2[1], m_ngp2[1], d[j]);
-            }
-            idxs[j] = GetPos(m_svp2[2], m_ngp2[2], d[2]);
-            break;
-         case 2:
-            for (j = 0; j < 2; j++) {
-               idxs[j] = GetPos(m_svp2[1], m_ngp2[1], d[j]);
-            }
-            idxs[2] = GetPos(m_svp2[0], m_ngp2[0], d[2]);
-            break;
-         case 3:
-            for (j = 0; j < 3; j++) {
-               idxs[j] = GetPos(m_svp2[2], m_ngp2[2], d[j]);
-            }
-            break;
+      for (j = 0; j < 3; j++) {
+         idxs[j] = GetPos(m_svp2[m_pt3[3*tp+j]], m_ngp2[m_pt3[3*tp+j]], d[j]);
       }
    } else if (bo == 4) {
-      switch (tp) {
-         case 0:
-            for (j = 0; j < 6; j++) {
-               idxs[j] = GetPos(m_svp2[0], m_ngp2[0], d[j]);
-            }
-            break;
-         case 1:
-            for (j = 0; j < 3; j++) {
-               idxs[j] = GetPos(m_svp2[1], m_ngp2[1], d[j]);
-            }
-            for (j = 3; j < 6; j++) {
-               idxs[j] = GetPos(m_svp2[2], m_ngp2[2], d[j]);
-            }
-            break;
-         case 2:
-            for (j = 0; j < 3; j++) {
-               idxs[j] = GetPos(m_svp2[1], m_ngp2[1], d[j]);
-            }
-            for (j = 3; j < 6; j++) {
-               idxs[j] = GetPos(m_svp2[0], m_ngp2[0], d[j]);
-            }
-            break;
-         case 3:
-            idxs[0] = GetPos(m_svp2[0], m_ngp2[0], d[0]);
-            for (j = 1; j < 5; j++) {
-               idxs[j] = GetPos(m_svp2[1], m_ngp2[1], d[j]);
-            }
-            idxs[5] = GetPos(m_svp2[2], m_ngp2[2], d[5]);
-            break;
-         case 4:
-            for (j = 0; j < 6; j++) {
-               idxs[j] = GetPos(m_svp2[2], m_ngp2[2], d[j]);
-            }
-            break;
+      for (j = 0; j < 6; j++) {
+         idxs[j] = GetPos(m_svp2[m_pt4[6*tp+j]], m_ngp2[m_pt4[6*tp+j]], d[j]);
       }
    }
 }
 
 void Descriptors::FindClosestMultiplets(double *r, set<int> *pss, set<Triplet, TripletCompare> *tss, set<Sixtuplet, SixtupletCompare> *sss) {
-   int i, j, k, tp, i1, i2, i3, i4, itmp;
+   int i, j, k, tp, i1, i2, i3, i4, stp;
    int *dloc;
    int idx[6];
    int idxsrc[6];
@@ -609,6 +561,7 @@ void Descriptors::FindClosestMultiplets(double *r, set<int> *pss, set<Triplet, T
       for (i2=i1+1; i2 < m_na-1; i2++) {
          for (i3=i2+1; i3 < m_na; i3++) {
             tp = m_t3[k];
+            stp = m_st3[tp];
             d2[0] = dist[dloc[3*k]];
             d2[1] = dist[dloc[3*k+1]];
             d2[2] = dist[dloc[3*k+2]];
@@ -616,8 +569,8 @@ void Descriptors::FindClosestMultiplets(double *r, set<int> *pss, set<Triplet, T
             idx[0] = idxsrc[0];
             idx[1] = idxsrc[1];
             idx[2] = idxsrc[2];
-            if (tp == 0 || tp == 3) sort(idx, idx+3);
-            else sort(idx, idx+2);
+            if (stp == 0) sort(idx, idx+3);
+            else if (stp == 1) sort(idx, idx+2);
             t.v[0] = idx[0];
             t.v[1] = idx[1];
             t.v[2] = idx[2];
@@ -633,6 +586,7 @@ void Descriptors::FindClosestMultiplets(double *r, set<int> *pss, set<Triplet, T
          for (i3=i2+1; i3 < m_na-1; i3++) {
             for (i4=i3+1; i4 < m_na; i4++) {
                tp = m_t4[k];
+               stp = m_st4[tp];
                d2[0] = dist[dloc[6*k]];
                d2[1] = dist[dloc[6*k+1]];
                d2[2] = dist[dloc[6*k+2]];
@@ -640,148 +594,14 @@ void Descriptors::FindClosestMultiplets(double *r, set<int> *pss, set<Triplet, T
                d2[4] = dist[dloc[6*k+4]];
                d2[5] = dist[dloc[6*k+5]];
                GetIdx(d2, idxsrc, tp, 4);
-               idx[0] = idxsrc[0];
-               idx[1] = idxsrc[1];
-               idx[2] = idxsrc[2];
-               idx[3] = idxsrc[3];
-               idx[4] = idxsrc[4];
-               idx[5] = idxsrc[5];
-               if (tp == 0 || tp == 4) {
-                  if (idx[0] > idx[5]) {
-                     itmp = idx[0];
-                     idx[0] = idx[5];
-                     idx[5] = itmp;
-                     itmp = idx[2];
-                     idx[2] = idx[3];
-                     idx[3] = itmp;
-                  }
-                  if (idx[1] > idx[4]) {
-                     itmp = idx[1];
-                     idx[1] = idx[4];
-                     idx[4] = itmp;
-                     itmp = idx[2];
-                     idx[2] = idx[3];
-                     idx[3] = itmp;
-                  }
-                  if (idx[0] > idx[1]) {
-                     itmp = idx[0];
-                     idx[0] = idx[1];
-                     idx[1] = itmp;
-                     itmp = idx[4];
-                     idx[4] = idx[5];
-                     idx[5] = itmp;
-                  }
-                  if (idx[0] > idx[2]) {
-                     itmp = idx[0];
-                     idx[0] = idx[2];
-                     idx[2] = itmp;
-                     itmp = idx[3];
-                     idx[3] = idx[5];
-                     idx[5] = itmp;
-                  }
-                  if (idx[1] > idx[2]) {
-                     itmp = idx[1];
-                     idx[1] = idx[2];
-                     idx[2] = itmp;
-                     itmp = idx[3];
-                     idx[3] = idx[4];
-                     idx[4] = itmp;
-                  }
-                  if (idx[0] == idx[1]) {
-                     if (idx[1] == idx[2]) {
-                        if (idx[3] > idx[4]) {
-                           itmp = idx[3];
-                           idx[3] = idx[4];
-                           idx[4] = itmp;
-                        }
-                        if (idx[3] > idx[5]) {
-                           itmp = idx[3];
-                           idx[3] = idx[5];
-                           idx[5] = itmp;
-                        }
-                        if (idx[4] > idx[5]) {
-                           itmp = idx[4];
-                           idx[4] = idx[5];
-                           idx[5] = itmp;
-                        }
-                     } else if (idx[4] > idx[5]) {
-                        itmp = idx[4];
-                        idx[4] = idx[5];
-                        idx[5] = itmp;
-                     }
-                  }
-               } else if (tp == 1 || tp == 2) {
-                  if (idx[0] > idx[1]) {
-                     itmp = idx[0];
-                     idx[0] = idx[1];
-                     idx[1] = itmp;
-                     itmp = idx[4];
-                     idx[4] = idx[5];
-                     idx[5] = itmp;
-                  }
-                  if (idx[0] > idx[2]) {
-                     itmp = idx[0];
-                     idx[0] = idx[2];
-                     idx[2] = itmp;
-                     itmp = idx[3];
-                     idx[3] = idx[5];
-                     idx[5] = itmp;
-                  }
-                  if (idx[1] > idx[2]) {
-                     itmp = idx[1];
-                     idx[1] = idx[2];
-                     idx[2] = itmp;
-                     itmp = idx[3];
-                     idx[3] = idx[4];
-                     idx[4] = itmp;
-                  }
-                  if (idx[0] == idx[1]) {
-                     if (idx[1] == idx[2]) {
-                        if (idx[3] > idx[4]) {
-                           itmp = idx[3];
-                           idx[3] = idx[4];
-                           idx[4] = itmp;
-                        }
-                        if (idx[3] > idx[5]) {
-                           itmp = idx[3];
-                           idx[3] = idx[5];
-                           idx[5] = itmp;
-                        }
-                        if (idx[4] > idx[5]) {
-                           itmp = idx[4];
-                           idx[4] = idx[5];
-                           idx[5] = itmp;
-                        }
-                     } else if (idx[4] > idx[5]) {
-                        itmp = idx[4];
-                        idx[4] = idx[5];
-                        idx[5] = itmp;
-                     }
-                  }
+               if (stp == 0) {
+                  reorder_idx(idxsrc, idx, 24, m_perm0);
+               } else if (stp == 1) {
+                  reorder_idx(idxsrc, idx, 6, m_perm1);
+               } else if (stp == 2) {
+                  reorder_idx(idxsrc, idx, 4, m_perm2);
                } else {
-                  itmp = (idx[1] < idx[2]) ? idx[1] : idx[2];
-                  if (idx[3] < itmp || idx[4] < itmp) {
-                     itmp = idx[1];
-                     idx[1] = idx[3];
-                     idx[3] = itmp;
-                     itmp = idx[2];
-                     idx[2] = idx[4];
-                     idx[4] = itmp;
-                  }
-                  if (idx[1] > idx[2]) {
-                     itmp = idx[1];
-                     idx[1] = idx[2];
-                     idx[2] = itmp;
-                     itmp = idx[3];
-                     idx[3] = idx[4];
-                     idx[4] = itmp;
-                  } else if (idx[1] == idx[2]) {
-                     if (idx[3] > idx[4]) {
-                        itmp = idx[3];
-                        idx[3] = idx[4];
-                        idx[4] = itmp;
-                     }
-                  }
+                  reorder_idx(idxsrc, idx, 2, m_perm2);
                }
                s.v[0] = idx[0];
                s.v[1] = idx[1];
@@ -873,8 +693,8 @@ void Descriptors::AssignGridPoints(int isrc1, int isrc2, int isrc3, int idst) {
    cout << "Generated " << count << " grid points for triplets of type " << idst << endl;
 }
 
-void Descriptors::AssignGridPoints(int isrc1, int isrc2, int isrc3, int isrc4, int isrc5, int isrc6, int idst) {
-   int i, j, i1, i2, i3, i4, i5, i6, count, gptot, pos, nperm, countkeep;
+void Descriptors::AssignGridPoints(int isrc1, int isrc2, int isrc3, int isrc4, int isrc5, int isrc6, int idst, int nperm) {
+   int i, j, i1, i2, i3, i4, i5, i6, count, gptot, pos, countkeep;
    double d[6];
    int *p;
    int orig[6];
@@ -882,58 +702,14 @@ void Descriptors::AssignGridPoints(int isrc1, int isrc2, int isrc3, int isrc4, i
    int (*perm)[6];
    bool *ignore;
    int m[5];
-   int perm0[][6] =
-   {
-      {0, 1, 2, 3, 4, 5},
-      {0, 2, 1, 4, 3, 5},
-      {1, 0, 2, 3, 5, 4},
-      {1, 2, 0, 5, 3, 4},
-      {2, 0, 1, 4, 5, 3},
-      {2, 1, 0, 5, 4, 3},
-      {0, 3, 4, 1, 2, 5},
-      {0, 4, 3, 2, 1, 5},
-      {3, 0, 4, 1, 5, 2},
-      {3, 4, 0, 5, 1, 2},
-      {4, 0, 3, 2, 5, 1},
-      {4, 3, 0, 5, 2, 1},
-      {1, 3, 5, 0, 2, 4},
-      {1, 5, 3, 2, 0, 4},
-      {3, 1, 5, 0, 4, 2},
-      {3, 5, 1, 4, 0, 2},
-      {5, 1, 3, 2, 4, 0},
-      {5, 3, 1, 4, 2, 0},
-      {2, 4, 5, 0, 1, 3},
-      {2, 5, 4, 1, 0, 3},
-      {4, 2, 5, 0, 3, 1},
-      {4, 5, 2, 3, 0, 1},
-      {5, 2, 4, 1, 3, 0},
-      {5, 4, 2, 3, 1, 0}
-   };
-   int perm1[][6] =
-   {
-      {0, 1, 2, 3, 4, 5},
-      {0, 2, 1, 4, 3, 5},
-      {1, 0, 2, 3, 5, 4},
-      {1, 2, 0, 5, 3, 4},
-      {2, 0, 1, 4, 5, 3},
-      {2, 1, 0, 5, 4, 3}
-   };
-   int perm2[][6] =
-   {
-      {0, 1, 2, 3, 4, 5},
-      {0, 2, 1, 4, 3, 5},
-      {0, 3, 4, 1, 2, 5},
-      {0, 4, 3, 2, 1, 5}
-   };
-   if (idst == 0 || idst == 4) {
-      perm = perm0;
-      nperm = 24;
-   } else if (idst == 3) {
-      perm = perm2;
-      nperm = 4;
+   if (nperm == 24) {
+      perm = m_perm0;
+   } else if (nperm == 4) {
+      perm = m_perm2;
+   } else if (nperm == 6) {
+      perm = m_perm1;
    } else {
-      perm = perm1;
-      nperm = 6;
+      perm = m_perm2;
    }
    gptot = m_ngp2[isrc1]*m_ngp2[isrc2]*m_ngp2[isrc3]*m_ngp2[isrc4]*m_ngp2[isrc5]*m_ngp2[isrc6];
    ignore = new bool[gptot];
@@ -1138,3 +914,46 @@ void Descriptors::SetUseInverseSpace(bool val) {
 double (*Descriptors::kernel2B)(double, double) = 0;
 double (*Descriptors::kernel3B)(double, double) = 0;
 double (*Descriptors::kernel4B)(double, double) = 0;
+int Descriptors::m_perm0[][6] =
+{
+   {0, 1, 2, 3, 4, 5},
+   {0, 2, 1, 4, 3, 5},
+   {1, 0, 2, 3, 5, 4},
+   {1, 2, 0, 5, 3, 4},
+   {2, 0, 1, 4, 5, 3},
+   {2, 1, 0, 5, 4, 3},
+   {0, 3, 4, 1, 2, 5},
+   {0, 4, 3, 2, 1, 5},
+   {3, 0, 4, 1, 5, 2},
+   {3, 4, 0, 5, 1, 2},
+   {4, 0, 3, 2, 5, 1},
+   {4, 3, 0, 5, 2, 1},
+   {1, 3, 5, 0, 2, 4},
+   {1, 5, 3, 2, 0, 4},
+   {3, 1, 5, 0, 4, 2},
+   {3, 5, 1, 4, 0, 2},
+   {5, 1, 3, 2, 4, 0},
+   {5, 3, 1, 4, 2, 0},
+   {2, 4, 5, 0, 1, 3},
+   {2, 5, 4, 1, 0, 3},
+   {4, 2, 5, 0, 3, 1},
+   {4, 5, 2, 3, 0, 1},
+   {5, 2, 4, 1, 3, 0},
+   {5, 4, 2, 3, 1, 0}
+};
+int Descriptors::m_perm1[][6] =
+{
+   {0, 1, 2, 3, 4, 5},
+   {0, 2, 1, 4, 3, 5},
+   {1, 0, 2, 3, 5, 4},
+   {1, 2, 0, 5, 3, 4},
+   {2, 0, 1, 4, 5, 3},
+   {2, 1, 0, 5, 4, 3}
+};
+int Descriptors::m_perm2[][6] =
+{
+   {0, 1, 2, 3, 4, 5},
+   {0, 2, 1, 4, 3, 5},
+   {0, 3, 4, 1, 2, 5},
+   {0, 4, 3, 2, 1, 5}
+};

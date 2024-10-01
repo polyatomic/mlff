@@ -32,4 +32,4 @@ int GetSubType(Triplet& t);
 void analyze_triplet(Triplet& t, int na, int i, int j, int k, int pids[]);
 void analyze_quadruplet(Quadruplet& q, int na, int i, int j, int k, int l, int pids[]);
 int GetSubType(Quadruplet& q);
-bool calculation_prepare(PType *params, Iterator<Mol>& mols, Descriptors& descs, int& nstr, int& n, double*& v, double*& Y);
+bool calculation_prepare(PType *params, Iterator<Mol>& mols, Descriptors& descs, int& nstr, int& n, double*& v, double*& Y, int nblocks[], char **blocks);

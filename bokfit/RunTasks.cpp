@@ -19,40 +19,24 @@ using std::istringstream;
 using std::ios;
 
 void RunTasks() {
-   int i, j, k, l, nstr, n, m, ndesc, ndesc_sketch, ndesc20, ndesc21, ndesc22, ndesc4, ndesc40, ndesc41, nsub, ntrain,
-       ndesc2, kk, ndesc3, ndesc30, ndesc31, ndesc32, ndesc33, ndesc42, ndesc43, ndesc44, nr, nc, np;
-   int *ids_train;
+   int i, j, k, l, nstr, n, m, ndesc, ndesc_sketch, ndesc4, nsub, ntrain,
+       ndesc2, kk, ndesc3, nr, nc, np, nb_total;
+   int *ids_train, *ndescs, *ndescs_sketch, *ranks;
+   int **ids_selected, **vars_selected;
    double avg, x, rmse;
    double *Y, *v, *rcoords, *stdevs, *avgs, *wmatc, *Yc, *stdevs_to_save, *avgs_to_save;
-   int ndescs[12] = {};
-   int ndescs_sketch[12] = {};
-   int ranks[12] = {};
-   int *ids_selected[12] = {};
-   int *vars_selected[12] = {};
-   double *levs[12] = {};
-   const char *blocks[12] = {
-      "g20",
-      "g21",
-      "g22",
-      "g30",
-      "g31",
-      "g32",
-      "g33",
-      "g40",
-      "g41",
-      "g42",
-      "g43",
-      "g44"
-   };
+   double **levs;
+   int nblocks[3];
+   char *blocks;
+   set<int> *pss = nullptr;
+   set<Triplet, TripletCompare> *tss = nullptr;
+   set<Triplet, TripletCompare> *tss_ref = nullptr;
+   set<Sixtuplet, SixtupletCompare> *sss = nullptr;
+   set<Sixtuplet, SixtupletCompare> *sss_ref = nullptr;
+   set<Triplet, TripletCompare>::iterator it, it2;
+   set<Sixtuplet, SixtupletCompare>::iterator its, its2;
    Iterator<Mol> mols;
    Descriptors descs;
-   set<int> pss[3];
-   set<Triplet, TripletCompare> tss[4];
-   set<Triplet, TripletCompare> tss_ref[4];
-   set<Triplet, TripletCompare>::iterator it, it2;
-   set<Sixtuplet, SixtupletCompare> sss[5];
-   set<Sixtuplet, SixtupletCompare> sss_ref[5];
-   set<Sixtuplet, SixtupletCompare>::iterator its, its2;
    set<int>::iterator itp;
    vector<int> ivec;
    ofstream ofile;
@@ -60,23 +44,44 @@ void RunTasks() {
    istringstream isstream;
    string line;
    Y = v = wmatc = Yc = stdevs = avgs = stdevs_to_save = avgs_to_save = 0;
-   ids_train = 0;
+   ids_train = ndescs = ndescs_sketch = ranks = 0;
+   ids_selected = vars_selected = 0;
+   blocks = 0;
+   levs = 0;
    int prec = numeric_limits<double>::max_digits10;
    streamsize oldprec = cout.precision();
    TFunctorDaDaI<Descriptors> dcalc;
    descs.SetUseInverseSpace(g_params.uis);
-   if (!calculation_prepare(&g_params, mols, descs, nstr, n, v, Y)) goto end;
+   if (!calculation_prepare(&g_params, mols, descs, nstr, n, v, Y, nblocks, &blocks)) goto end;
+   pss = new set<int>[nblocks[0]];
+   tss = new set<Triplet, TripletCompare>[nblocks[1]];
+   tss_ref = new set<Triplet, TripletCompare>[nblocks[1]];
+   sss = new set<Sixtuplet, SixtupletCompare>[nblocks[2]];
+   sss_ref = new set<Sixtuplet, SixtupletCompare>[nblocks[2]];
+   nb_total = nblocks[0] + nblocks[1] + nblocks[2];
+   ndescs = new int[nb_total];
+   ndescs_sketch = new int[nb_total];
+   ranks = new int[nb_total];
+   ids_selected = new int*[nb_total];
+   vars_selected = new int*[nb_total];
+   levs = new double*[nb_total];
+   for (i=0; i < nb_total; i++) {
+      ndescs[i] = 0;
+      ndescs_sketch[i] = 0;
+      ranks[i] = 0;
+      ids_selected[i] = 0;
+      vars_selected[i] = 0;
+      levs[i] = 0;
+   }
    if (g_params.preselect_descriptors) {
       for (i = 0; i < nstr; i++) {
          rcoords = v + i*n;
          descs.FindClosestMultiplets(rcoords, pss, tss, sss);
       }
       cout << "2B descriptors selected according to closeness to training points" << endl;
-      for (i = 0; i < 3; i++) {
+      for (i = 0; i < nblocks[0]; i++) {
          cout << "Descriptors of type " << i << endl;
-         if (i == 0) ofile.open("g20.txt");
-         else if (i == 1) ofile.open("g21.txt");
-         else ofile.open("g22.txt");
+         ofile.open(string(blocks+4*i) + ".txt");
          cout << pss[i].size() << endl;
          ofile << pss[i].size() << endl;
          for (itp = pss[i].begin(); itp != pss[i].end(); itp++) {
@@ -87,7 +92,7 @@ void RunTasks() {
       }
       descs.Get3BGridPoints(tss_ref);
       cout << "3B descriptors selected according to closeness to training points" << endl;
-      for (i = 0; i < 4; i++) {
+      for (i = 0; i < nblocks[1]; i++) {
          ivec.clear();
          cout << "Descriptors of type " << i << endl;
          cout << tss[i].size() << endl;
@@ -104,10 +109,7 @@ void RunTasks() {
          }
          cout << j << endl;
          if (j > 0) {
-            if (i == 0) ofile.open("g30.txt");
-            else if (i == 1) ofile.open("g31.txt");
-            else if (i == 2) ofile.open("g32.txt");
-            else ofile.open("g33.txt");
+            ofile.open(string(blocks+4*(nblocks[0]+i)) + ".txt");
             ofile << j << endl;
             for (k=0; k < j; k++) {
                ofile << ivec[k*3] << " " << ivec[k*3+1] << " " << ivec[k*3+2] << endl;
@@ -117,7 +119,7 @@ void RunTasks() {
       }
       descs.Get4BGridPoints(sss_ref);
       cout << "4B descriptors selected according to closeness to training points" << endl;
-      for (i = 0; i < 5; i++) {
+      for (i = 0; i < nblocks[2]; i++) {
          ivec.clear();
          cout << "Descriptors of type " << i << endl;
          cout << sss[i].size() << endl;
@@ -134,11 +136,7 @@ void RunTasks() {
          }
          cout << j << endl;
          if (j > 0) {
-            if (i == 0) ofile.open("g40.txt");
-            else if (i == 1) ofile.open("g41.txt");
-            else if (i == 2) ofile.open("g42.txt");
-            else if (i == 3) ofile.open("g43.txt");
-            else ofile.open("g44.txt");
+            ofile.open(string(blocks+4*(nblocks[0]+nblocks[1]+i)) + ".txt");
             ofile << j << endl;
             for (k = 0; k < j; k++) {
                ofile << ivec[k*6] << " " << ivec[k*6+1] << " " << ivec[k*6+2] << " " << ivec[k*6+3] << " " << ivec[k*6+4] << " " << ivec[k*6+5] << endl;
@@ -154,8 +152,8 @@ void RunTasks() {
    avgs = new double[ndesc];
    stdevs_to_save = new double[ndesc];
    avgs_to_save = new double[ndesc];
-   for (i=0; i < 12; i++) ids_selected[i] = new int[nstr];
-   for (i=0; i < 12; i++) levs[i] = new double[nstr];
+   for (i=0; i < nb_total; i++) ids_selected[i] = new int[nstr];
+   for (i=0; i < nb_total; i++) levs[i] = new double[nstr];
    // wmatc = new double[nstr*ndesc];
    cout << "Number of descriptors: " << ndesc << endl;
    dcalc.init(&descs, &Descriptors::Calculate);
@@ -173,12 +171,10 @@ void RunTasks() {
    }
    ndesc2 = descs.GetN2BDescriptors();
    cout << "Number of 2B descriptors: " << ndesc2 << endl;
-   ndesc20 = descs.GetN2BDescriptors(0);
-   ndesc21 = descs.GetN2BDescriptors(1);
-   ndesc22 = descs.GetN2BDescriptors(2);
-   cout << "   type 0: " << ndesc20 << endl;
-   cout << "   type 1: " << ndesc21 << endl;
-   cout << "   type 2: " << ndesc22 << endl;
+   for (i = 0; i < nblocks[0]; i++) {
+      ndescs[i] = descs.GetN2BDescriptors(i);
+      cout << "   type " << i << ": " << ndescs[i] << endl;
+   }
    Yc = new double[nstr];
    for (i = 0, avg = 0.0; i < nstr; i++) avg += Y[i];
    avg /= nstr;
@@ -187,51 +183,29 @@ void RunTasks() {
       rmse += Yc[i]*Yc[i];
    }
    rmse = sqrt(rmse/nstr);
-   ndescs[0] = ndesc20;
-   ndescs[1] = ndesc21;
-   ndescs[2] = ndesc22;
    ndesc3 = descs.GetN3BDescriptors();
    cout << "Number of 3B descriptors: " << ndesc3 << endl;
-   ndesc30 = descs.GetN3BDescriptors(0);
-   ndesc31 = descs.GetN3BDescriptors(1);
-   ndesc32 = descs.GetN3BDescriptors(2);
-   ndesc33 = descs.GetN3BDescriptors(3);
-   cout << "   type 0: " << ndesc30 << endl;
-   cout << "   type 1: " << ndesc31 << endl;
-   cout << "   type 2: " << ndesc32 << endl;
-   cout << "   type 3: " << ndesc33 << endl;
-   ndescs[3] = ndesc30;
-   ndescs[4] = ndesc31;
-   ndescs[5] = ndesc32;
-   ndescs[6] = ndesc33;
+   for (i = nblocks[0], j=0; i < nblocks[0] + nblocks[1]; i++, j++) {
+      ndescs[i] = descs.GetN3BDescriptors(j);
+      cout << "   type " << j << ": " << ndescs[i] << endl;
+   }
    ndesc4 = descs.GetN4BDescriptors();
    cout << "Number of 4B descriptors: " << ndesc4 << endl;
-   ndesc40 = descs.GetN4BDescriptors(0);
-   ndesc41 = descs.GetN4BDescriptors(1);
-   ndesc42 = descs.GetN4BDescriptors(2);
-   ndesc43 = descs.GetN4BDescriptors(3);
-   ndesc44 = descs.GetN4BDescriptors(4);
-   cout << "   type 0: " << ndesc40 << endl;
-   cout << "   type 1: " << ndesc41 << endl;
-   cout << "   type 2: " << ndesc42 << endl;
-   cout << "   type 3: " << ndesc43 << endl;
-   cout << "   type 4: " << ndesc44 << endl;
-   ndescs[7] = ndesc40;
-   ndescs[8] = ndesc41;
-   ndescs[9] = ndesc42;
-   ndescs[10] = ndesc43;
-   ndescs[11] = ndesc44;
+   for (i = nblocks[0] + nblocks[1], j=0; i < nb_total; i++, j++) {
+      ndescs[i] = descs.GetN4BDescriptors(j);
+      cout << "   type " << j << ": " << ndescs[i] << endl;
+   }
    if (!ndesc3)
-      nsub = 3;
+      nsub = nblocks[0];
    else if (!ndesc4)
-      nsub = 7;
+      nsub = nblocks[0] + nblocks[1];
    else
-      nsub = 12;
+      nsub = nb_total;
    if (!g_params.build_regression) {
       if (g_params.order_by_leverages) {
          order_by_leverages(nstr, ndescs, nsub, "descs.bin", "descst.bin", ids_selected, levs, ranks, g_params.maxrows, g_params.nthreads);
-         for (j = 0; j < 12; j++) {
-            ofile.open((string(blocks[j]) + "s.txt").c_str());
+         for (j = 0; j < nb_total; j++) {
+            ofile.open((string(blocks+4*j) + "s.txt").c_str());
             for (i = 0; i < nstr; i++) ofile << ids_selected[j][i] << endl;
             ofile.close();
          }
@@ -239,27 +213,27 @@ void RunTasks() {
          for (i = 0; i < nsub; i++) ofile << ranks[i] << endl;
          ofile.close();
       } else {
-         for (j = 0; j < 12; j++) {
-            if (!File2Array(string(blocks[j]) + "s.txt", ids_selected[j])) goto end;
+         for (j = 0; j < nb_total; j++) {
+            if (!File2Array(string(blocks+4*j) + "s.txt", ids_selected[j])) goto end;
          }
          if (!File2Array("ranks.txt", ranks)) goto end;
          for (i=0; i < nsub; i++) {
             vars_selected[i] = new int[ranks[i]];
             for (j = 0; j < ranks[i]; j++) vars_selected[i][j] = -1;
          }
-         sketch_matrices(nstr, ndescs, nsub, "descs.bin", ids_selected, ranks, g_params.nsketch, g_params.nthreads, vars_selected);
+         sketch_matrices(nstr, ndescs, nblocks, nsub, "descs.bin", ids_selected, ranks, g_params.nsketch, g_params.nthreads, vars_selected);
          for (i = 0, l = 0, m = 0; i < nsub; i++) {
             if (vars_selected[i][0] == -1) {
                ndescs_sketch[i] = ndescs[i];
-               copy_file((string(blocks[i]) + ".txt").c_str(), (string(blocks[i]) + "f.txt").c_str());
+               copy_file((string(blocks+4*i) + ".txt").c_str(), (string(blocks+4*i) + "f.txt").c_str());
                for (j = 0; j < ndescs_sketch[i]; j++) {
                   avgs_to_save[l] = avgs[m];
                   stdevs_to_save[l++] = stdevs[m++];
                }
             } else {
                ndescs_sketch[i] = ranks[i];
-               ifile.open((string(blocks[i]) + ".txt").c_str(), ios::in);
-               ofile.open((string(blocks[i]) + "f.txt").c_str(), ios::out);
+               ifile.open((string(blocks+4*i) + ".txt").c_str(), ios::in);
+               ofile.open((string(blocks+4*i) + "f.txt").c_str(), ios::out);
                getline(ifile, line, '\n');
                isstream.str(line);
                isstream >> np;
@@ -317,8 +291,8 @@ void RunTasks() {
          ofile.close();
       }
    } else {
-      for (j = 0; j < 12; j++) {
-         if (!File2Array(string(blocks[j]) + "s.txt", ids_selected[j])) goto end;
+      for (j = 0; j < nb_total; j++) {
+         if (!File2Array(string(blocks+4*j) + "s.txt", ids_selected[j])) goto end;
       }
       if (!File2Array("ndescs_sketch.txt", ndescs)) goto end;
       ntrain = g_params.tss;
@@ -331,7 +305,7 @@ void RunTasks() {
 end:
    delete [] ids_train;
    delete [] Yc;
-   for (i=0; i < 12; i++) {
+   for (i=0; i < nb_total; i++) {
       delete [] levs[i];
       delete [] vars_selected[i];
       delete [] ids_selected[i];
@@ -340,6 +314,18 @@ end:
    delete [] stdevs_to_save;
    delete [] avgs;
    delete [] stdevs;
+   delete [] levs;
+   delete [] vars_selected;
+   delete [] ids_selected;
+   delete [] ranks;
+   delete [] ndescs_sketch;
+   delete [] ndescs;
+   delete [] sss_ref;
+   delete [] sss;
+   delete [] tss_ref;
+   delete [] tss;
+   delete [] pss;
+   delete [] blocks;
    delete [] v;
    delete [] Y;
 }

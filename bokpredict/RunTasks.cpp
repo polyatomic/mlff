@@ -33,6 +33,8 @@ void RunTasks() {
    double *v, *B, *stdevs, *avgs, *Y, *Yp;
    double *dvals[MAX_THREADS];
    int *tsizes;
+   int nblocks[3];
+   char *blocks;
    double avg, rss, dif, rss2;
    thread threads[MAX_THREADS];
    Iterator<Mol> mols;
@@ -42,7 +44,7 @@ void RunTasks() {
    Descriptors descs;
    TFunctorDaDaI<Descriptors> dcalc;
    string s = g_params.linearCoeffs;
-   if (!calculation_prepare(&g_params, mols, descs, nstr, n, v, Y)) goto end;
+   if (!calculation_prepare(&g_params, mols, descs, nstr, n, v, Y, nblocks, &blocks)) goto end;
    ndesc = descs.GetNDescriptors();
    cout << "Number of descriptors: " << ndesc << endl;
    dcalc.init(&descs, &Descriptors::Calculate);
@@ -88,6 +90,7 @@ end:
    delete [] avgs;
    delete [] stdevs;
    delete [] B;
+   delete [] blocks;
    delete [] Y;
    delete [] v;
 }

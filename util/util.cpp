@@ -71,20 +71,20 @@ vector<string> Tokenize(const string& str, const string& delimiters) {
 }
 
 void Matrix2File(double *X, int nrows, int ncols, const char *fn) {
-   int i;
+   long long i;
    ofstream ofile(fn, ios::out | ios::binary);
    ofile.write((char*)&nrows, sizeof(int));
    ofile.write((char*)&ncols, sizeof(int));
-   for (i = 0; i < nrows*ncols; i++) ofile.write((char*)&X[i], sizeof(double));
+   for (i = 0; i < ((long long)nrows)*ncols; i++) ofile.write((char*)&X[i], sizeof(double));
    ofile.close();
 }
 
 void File2Matrix(const char *fn, int& nrows, int& ncols, double *X) {
-   int i;
+   long long i;
    ifstream ifile(fn, ios::in | ios::binary);
    ifile.read((char*)&nrows, sizeof(int));
    ifile.read((char*)&ncols, sizeof(int));
-   for (i = 0; i < nrows*ncols; i++) ifile.read((char*)&X[i], sizeof(double));
+   for (i = 0; i < ((long long)nrows)*ncols; i++) ifile.read((char*)&X[i], sizeof(double));
    ifile.close();
 }
 

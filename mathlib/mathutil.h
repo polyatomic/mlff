@@ -1,6 +1,6 @@
 #pragma once
 
-#include "mkl_lapacke.h"
+#include "mkl.h"
 
 #define IDX(n,i,j) (2*n-i-1)*i/2+j-i-1
 
@@ -14,12 +14,15 @@ double rp_3_1_kernel(double x1, double x2);
 double rp_3_0_kernel(double x1, double x2);
 double symmetrized_kernel3_0(double *x1, double *x2, double (*kernel)(double, double));
 double symmetrized_kernel3_1(double *x1, double *x2, double (*kernel)(double, double));
+double symmetrized_kernel3_2(double *x1, double *x2, double (*kernel)(double, double));
 double symmetrized_kernel4_0(double *x1, double *x2, double (*kernel)(double, double));
 double symmetrized_kernel4_1(double *x1, double *x2, double (*kernel)(double, double));
 double symmetrized_kernel4_2(double *x1, double *x2, double (*kernel)(double, double));
+double symmetrized_kernel4_3(double *x1, double *x2, double (*kernel)(double, double));
 void scale(const double *mat, int m, int n, double *cmat, double *avgs, double *stdevs);
 void transpose(const double *mat_in, double *mat_out, int m, int n);
 double dot_prod(const double *v1, const double *v2, int n);
+double dot_prod_blas(const double *v1, const double *v2, int n);
 double dot_prod_kahan(const double *v1, const double *v2, int n);
 bool eigs(const double m[], double v[], double e[], int n);
 void MatByVec(const double a[], const double b[], double c[], int m, int n);

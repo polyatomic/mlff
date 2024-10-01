@@ -16,8 +16,8 @@ class Descriptors {
 public:
    Descriptors();
    ~Descriptors();
-   bool Init(int na, int nt2, int *t2, int nt3, int *st3, int *t3, int nt4, int *st4, int *t4, int *ngp, int nthreads = 1);
-   void SetGrid(double *dmin, double *dmax, double *gmin, double step_size);
+   bool Init(int na, int nt2, int *t2, int nt3, int *st3, int *t3, int *pt3, int nt4, int *st4, int *t4, int *pt4, int *ngp, int nthreads = 1);
+   void SetGrid(double *dmin, double *dmax, double *gmin, double step_size, const char *blocks, int *sym);
    int GetNDescriptors();
    int GetN2BDescriptors(int type = -1);
    int GetN3BDescriptors(int type = -1);
@@ -27,7 +27,7 @@ public:
    void FindClosestMultiplets(double *r, set<int> *pss, set<Triplet, TripletCompare> *tss, set<Sixtuplet, SixtupletCompare> *sss);
    bool ReadGridPoints(int idst, const char *fn);
    void AssignGridPoints(int isrc1, int isrc2, int isrc3, int idst);
-   void AssignGridPoints(int isrc1, int isrc2, int isrc3, int isrc4, int isrc5, int isrc6, int idst);
+   void AssignGridPoints(int isrc1, int isrc2, int isrc3, int isrc4, int isrc5, int isrc6, int idst, int nperm);
    bool ReadGridPoints(int isrc1, int isrc2, int isrc3, int idst, const char *fn);
    bool ReadGridPoints(int isrc1, int isrc2, int isrc3, int isrc4, int isrc5, int isrc6, int idst, const char *fn);
    void Get3BGridPoints(set<Triplet, TripletCompare> *tss);
@@ -39,6 +39,7 @@ public:
    static void SetKernel4B(int kernel_type);
    static int getposition(int p[], int m[]);
    static bool IsEmbeddable(double d1, double d2, double d3, double d4, double d5, double d6);
+   static void reorder_idx(int idxsrc[], int idx[], int nperm, int perm[][6]);
 
 private:
    int m_na;         // Number of atoms
@@ -53,6 +54,8 @@ private:
    int *m_t4;        // Vector of type ids for atom quadruplets and their pair ids
    int *m_st3;       // Subtype ids for each triplet type
    int *m_st4;       // Subtype ids for each quadruplet type
+   int *m_pt3;       // Pair types for each triplet type
+   int *m_pt4;       // Pair types for each quadruplet type
    int *m_ngp2;      // Number of grid points for each atom type pair
    int *m_ngp3;      // Number of grid points for each atom type triplet
    int *m_ngp4;      // Number of grid points for each atom type quadruplet
@@ -77,4 +80,7 @@ private:
    static double (*kernel2B)(double, double);
    static double (*kernel3B)(double, double);
    static double (*kernel4B)(double, double);
+   static int m_perm0[][6];
+   static int m_perm1[][6];
+   static int m_perm2[][6];
 };
