@@ -158,10 +158,14 @@ void RunTasks() {
    cout << "Number of descriptors: " << ndesc << endl;
    dcalc.init(&descs, &Descriptors::Calculate);
    if (!g_params.read_descriptors) {
-      calculate_descriptors(nstr, ndesc, n, v, &dcalc, stdevs, avgs, g_params.nthreads, g_params.maxrows);
+      if (g_params.ues) {
+         calculate_descriptors(nstr, ndesc, n, v, &dcalc, stdevs, avgs, g_params.nthreads, g_params.maxrows, "stdevs.bin", "avgs.bin");
+      } else {
+         calculate_descriptors(nstr, ndesc, n, v, &dcalc, stdevs, avgs, g_params.nthreads, g_params.maxrows);
+         Matrix2File(stdevs, ndesc, 1, "stdevs.bin");
+         Matrix2File(avgs, ndesc, 1, "avgs.bin");
+      }
       // Matrix2File(wmatc, nstr, ndesc, "descs.bin");
-      Matrix2File(stdevs, ndesc, 1, "stdevs.bin");
-      Matrix2File(avgs, ndesc, 1, "avgs.bin");
       goto end;
    } else {
       // Add error handling here for the case bin files don't exist

@@ -39,6 +39,7 @@ bool ReadParams(const char *fn) {
    g_params.kernel_4b = 0;
    g_params.nsketch = 0;
    g_params.uis = false;
+   g_params.ues = false;
    g_params.gss = 0.0;
    for (;;) {
       if (ifile.eof()) break;
@@ -125,6 +126,9 @@ bool ReadParams(const char *fn) {
       } else if (par == "USE_INVERSE_SPACE") {
          ival = atoi(val.c_str());
          if (ival == 1) g_params.uis = true;
+      } else if (par == "USE_EXTERNAL_SCALING") {
+         ival = atoi(val.c_str());
+         if (ival == 1) g_params.ues = true;
       }
       par = "";
    }

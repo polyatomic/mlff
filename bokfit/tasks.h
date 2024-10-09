@@ -4,7 +4,7 @@
 
 #define MAX_THREADS 16
 
-bool calculate_descriptors(int N, int M, int olength, double *r, FunctorDaDaI *dcalc, double *stdevs, double *avgs, /*double *wmatc,*/ int nthreads, int maxrows);
+bool calculate_descriptors(int N, int M, int olength, double *r, FunctorDaDaI *dcalc, double *stdevs, double *avgs, /*double *wmatc,*/ int nthreads, int maxrows, const char *stdevs_file = nullptr, const char *avgs_file = nullptr);
 bool order_by_leverages(int N, int M, double *wmatc, int *ids_selected, double *leverages);
 bool order_by_leverages(int N, int M[], int nsub, const char *wmatc_name, const char *wmatct_name, int *ids_selected[], double *leverages[], int ranks[], int bufsize, int nthreads);
 void sketch_matrices(int N, int M[], int nblocks[], int nsub, const char *wmatc_name, int *ids_selected[], int ranks[], int n_test_rows, int nthreads, int *selected_variables[]);

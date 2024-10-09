@@ -14,6 +14,7 @@ struct PTypeExtended : public PType {
    bool build_regression;
    bool order_by_leverages;
    bool uis;
+   bool ues;
 };
 
 void RunTasks();

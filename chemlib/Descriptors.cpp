@@ -145,39 +145,40 @@ void Descriptors::SetGrid(double *dmin, double *dmax, double *gmin, double step_
       m_ndesc += m_ngp2[i];
    }
    m_ngp2sum = m_ndesc;
-   if (!m_nt3) goto end;
-   m_svp3 = new double*[m_nt3];
-   for (i=0; i < m_nt3; i++) m_svp3[i] = 0;
-   m_svp3i = new int*[m_nt3];
-   for (i=0; i < m_nt3; i++) m_svp3i[i] = 0;
-   m_ngp3 = new int[m_nt3];
-   for (i = 0; i < m_nt3; i++) {
-      p = m_pt3 + 3*i;
-      if (!ReadGridPoints(p[0], p[1], p[2], i, (string(blocks+4*(m_nt2+i)) + ".txt").c_str())) AssignGridPoints(p[0], p[1], p[2], i);
+   if (m_nt3) {
+      m_svp3 = new double*[m_nt3];
+      for (i=0; i < m_nt3; i++) m_svp3[i] = 0;
+      m_svp3i = new int*[m_nt3];
+      for (i=0; i < m_nt3; i++) m_svp3i[i] = 0;
+      m_ngp3 = new int[m_nt3];
+      for (i = 0; i < m_nt3; i++) {
+         p = m_pt3 + 3*i;
+         if (!ReadGridPoints(p[0], p[1], p[2], i, (string(blocks+4*(m_nt2+i)) + ".txt").c_str())) AssignGridPoints(p[0], p[1], p[2], i);
+      }
+      for (i=0,j=0; i < m_nt3; i++) {
+         m_t3b[i] = j;
+         j += m_ngp3[i];
+      }
+      m_ndesc += j;
+      m_ngp3sum = m_ndesc;
    }
-   for (i=0,j=0; i < m_nt3; i++) {
-      m_t3b[i] = j;
-      j += m_ngp3[i];
+   if (m_nt4) {
+      m_svp4 = new double*[m_nt4];
+      for (i=0; i < m_nt4; i++) m_svp4[i] = 0;
+      m_svp4i = new int*[m_nt4];
+      for (i=0; i < m_nt4; i++) m_svp4i[i] = 0;
+      m_ngp4 = new int[m_nt4];
+      for (i = 0; i < m_nt4; i++) {
+         p = m_pt4 + 6*i;
+         // TODO: Remove sym and induce it from m_st4
+         if (!ReadGridPoints(p[0], p[1], p[2], p[3], p[4], p[5], i, (string(blocks+4*(m_nt2+m_nt3+i)) + ".txt").c_str())) AssignGridPoints(p[0], p[1], p[2], p[3], p[4], p[5], i, sym[i]);
+      }
+      for (i = 0, j = 0; i < m_nt4; i++) {
+         m_t4b[i] = j;
+         j += m_ngp4[i];
+      }
+      m_ndesc += j;
    }
-   m_ndesc += j;
-   m_ngp3sum = m_ndesc;
-   if (!m_nt4) goto end;
-   m_svp4 = new double*[m_nt4];
-   for (i=0; i < m_nt4; i++) m_svp4[i] = 0;
-   m_svp4i = new int*[m_nt4];
-   for (i=0; i < m_nt4; i++) m_svp4i[i] = 0;
-   m_ngp4 = new int[m_nt4];
-   for (i = 0; i < m_nt4; i++) {
-      p = m_pt4 + 6*i;
-      // TODO: Remove sym and induce it from m_st4
-      if (!ReadGridPoints(p[0], p[1], p[2], p[3], p[4], p[5], i, (string(blocks+4*(m_nt2+m_nt3+i)) + ".txt").c_str())) AssignGridPoints(p[0], p[1], p[2], p[3], p[4], p[5], i, sym[i]);
-   }
-   for (i = 0, j = 0; i < m_nt4; i++) {
-      m_t4b[i] = j;
-      j += m_ngp4[i];
-   }
-   m_ndesc += j;
-end:
    for (i = 0; i < m_nt2; i++) {
       ReadGridPoints(i, (string(blocks+4*i) + ".txt").c_str());
    }
@@ -450,52 +451,54 @@ void Descriptors::Calculate(double *r, double *x, int wsi) {
          x[tpb+l] += kernel2B(m_svp2[tp][l], dist[i]);
       }
    }
-   if (!m_nt3) return;
-   xp = x + m_ngp2sum;
-   dloc = m_t3 + m_na3;
-   for (i1=0,k=0; i1 < m_na-2; i1++) {
-      for (i2=i1+1; i2 < m_na-1; i2++) {
-         for (i3=i2+1; i3 < m_na; i3++) {
-            tp = m_t3[k];
-            tpb = m_t3b[tp];
-            d2[0] = dist[dloc[3*k]];
-            d2[1] = dist[dloc[3*k+1]];
-            d2[2] = dist[dloc[3*k+2]];
-            for (l=0; l < m_ngp3[tp]; l++) {
-               d1[0] = m_svp3[tp][3*l];
-               d1[1] = m_svp3[tp][3*l+1];
-               d1[2] = m_svp3[tp][3*l+2];
-               xp[tpb+l] += symmetrized_kernels3[m_st3[tp]](d1, d2, kernel3B);
+   if (m_nt3) {
+      xp = x + m_ngp2sum;
+      dloc = m_t3 + m_na3;
+      for (i1=0,k=0; i1 < m_na-2; i1++) {
+         for (i2=i1+1; i2 < m_na-1; i2++) {
+            for (i3=i2+1; i3 < m_na; i3++) {
+               tp = m_t3[k];
+               tpb = m_t3b[tp];
+               d2[0] = dist[dloc[3*k]];
+               d2[1] = dist[dloc[3*k+1]];
+               d2[2] = dist[dloc[3*k+2]];
+               for (l=0; l < m_ngp3[tp]; l++) {
+                  d1[0] = m_svp3[tp][3*l];
+                  d1[1] = m_svp3[tp][3*l+1];
+                  d1[2] = m_svp3[tp][3*l+2];
+                  xp[tpb+l] += symmetrized_kernels3[m_st3[tp]](d1, d2, kernel3B);
+               }
+               k++;
             }
-            k++;
          }
       }
    }
-   if (!m_nt4) return;
-   xp = x + m_ngp3sum;
-   dloc = m_t4 + m_na4;
-   for (i1=0,k=0; i1 < m_na-3; i1++) {
-      for (i2=i1+1; i2 < m_na-2; i2++) {
-         for (i3=i2+1; i3 < m_na-1; i3++) {
-            for (i4=i3+1; i4 < m_na; i4++) {
-               tp = m_t4[k];
-               tpb = m_t4b[tp];
-               d2[0] = dist[dloc[6*k]];
-               d2[1] = dist[dloc[6*k+1]];
-               d2[2] = dist[dloc[6*k+2]];
-               d2[3] = dist[dloc[6*k+3]];
-               d2[4] = dist[dloc[6*k+4]];
-               d2[5] = dist[dloc[6*k+5]];
-               for (l=0; l < m_ngp4[tp]; l++) {
-                  d1[0] = m_svp4[tp][6*l];
-                  d1[1] = m_svp4[tp][6*l+1];
-                  d1[2] = m_svp4[tp][6*l+2];
-                  d1[3] = m_svp4[tp][6*l+3];
-                  d1[4] = m_svp4[tp][6*l+4];
-                  d1[5] = m_svp4[tp][6*l+5];
-                  xp[tpb+l] += symmetrized_kernels4[m_st4[tp]](d1, d2, kernel4B);
+   if (m_nt4) {
+      xp = x + m_ngp3sum;
+      dloc = m_t4 + m_na4;
+      for (i1=0,k=0; i1 < m_na-3; i1++) {
+         for (i2=i1+1; i2 < m_na-2; i2++) {
+            for (i3=i2+1; i3 < m_na-1; i3++) {
+               for (i4=i3+1; i4 < m_na; i4++) {
+                  tp = m_t4[k];
+                  tpb = m_t4b[tp];
+                  d2[0] = dist[dloc[6*k]];
+                  d2[1] = dist[dloc[6*k+1]];
+                  d2[2] = dist[dloc[6*k+2]];
+                  d2[3] = dist[dloc[6*k+3]];
+                  d2[4] = dist[dloc[6*k+4]];
+                  d2[5] = dist[dloc[6*k+5]];
+                  for (l=0; l < m_ngp4[tp]; l++) {
+                     d1[0] = m_svp4[tp][6*l];
+                     d1[1] = m_svp4[tp][6*l+1];
+                     d1[2] = m_svp4[tp][6*l+2];
+                     d1[3] = m_svp4[tp][6*l+3];
+                     d1[4] = m_svp4[tp][6*l+4];
+                     d1[5] = m_svp4[tp][6*l+5];
+                     xp[tpb+l] += symmetrized_kernels4[m_st4[tp]](d1, d2, kernel4B);
+                  }
+                  k++;
                }
-               k++;
             }
          }
       }

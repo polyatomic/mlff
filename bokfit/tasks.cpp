@@ -97,7 +97,7 @@ void runLeverageCalc(int jstart, int jend, int rowsum, int rank, int Ms, int nto
    }
 }
 
-bool calculate_descriptors(int N, int M, int olength, double *r, FunctorDaDaI *dcalc, double *stdevs, double *avgs, /*double* wmatc,*/ int nthreads, int maxrows) {
+bool calculate_descriptors(int N, int M, int olength, double *r, FunctorDaDaI *dcalc, double *stdevs, double *avgs, /*double* wmatc,*/ int nthreads, int maxrows, const char *stdevs_file, const char *avgs_file) {
    /*int i;
    double *wp, *wmat, *rcoords;
    cout << "#####   Starting calculate_descriptors   #####\n";
@@ -128,9 +128,14 @@ bool calculate_descriptors(int N, int M, int olength, double *r, FunctorDaDaI *d
    wmat = new double[M*maxrows];
    wmatc = new double[M*maxrows];
    wmatct = new double[((long long)N)*maxrows];
-   for (i=0; i < M; i++) {
-      avgs[i] = 0.0;
-      stdevs[i] = 0.0;
+   if (stdevs_file) {
+      File2Matrix(avgs_file, i, j, avgs);
+      File2Matrix(stdevs_file, i, j, stdevs);
+   } else {
+      for (i=0; i < M; i++) {
+         avgs[i] = 0.0;
+         stdevs[i] = 0.0;
+      }
    }
    rowsum = 0;
    matcount = 0;
@@ -160,16 +165,20 @@ bool calculate_descriptors(int N, int M, int olength, double *r, FunctorDaDaI *d
          threads[tc].join();
       fn = "_mat." + std::to_string(matcount) + ".bin";
       Matrix2File(wmat, cur_rows, M, fn.c_str());
-      for (i = 0; i < cur_rows; i++) {
-         for (j = 0; j < M; j++) {
-            avgs[j] += wmat[i*M+j];
+      if (!stdevs_file) {
+         for (i = 0; i < cur_rows; i++) {
+            for (j = 0; j < M; j++) {
+               avgs[j] += wmat[i*M+j];
+            }
          }
       }
       rowsum += cur_rows;
       if (rowsum == N) break;
       matcount++;
    }
-   for (i=0; i < M; i++) avgs[i] = avgs[i]/N;
+   if (!stdevs_file) {
+      for (i=0; i < M; i++) avgs[i] = avgs[i]/N;
+   }
    rowsum = 0;
    matcount = 0;
    for (;;) {
@@ -179,17 +188,21 @@ bool calculate_descriptors(int N, int M, int olength, double *r, FunctorDaDaI *d
          cur_rows = maxrows;
       fn = "_mat." + std::to_string(matcount) + ".bin";
       File2Matrix(fn.c_str(), nr, nc, wmat);
-      for (i = 0; i < cur_rows; i++) {
-         for (j = 0; j < M; j++) {
-            s = wmat[i*M+j] - avgs[j];
-            stdevs[j] += s*s;
+      if (!stdevs_file) {
+         for (i = 0; i < cur_rows; i++) {
+            for (j = 0; j < M; j++) {
+               s = wmat[i*M+j] - avgs[j];
+               stdevs[j] += s*s;
+            }
          }
       }
       rowsum += cur_rows;
       if (rowsum == N) break;
       matcount++;
    }
-   for (i = 0; i < M; i++) stdevs[i] = sqrt(stdevs[i]/N);
+   if (!stdevs_file) {
+      for (i = 0; i < M; i++) stdevs[i] = sqrt(stdevs[i]/N);
+   }
    rowsum = 0;
    matcount = 0;
    for (;;) {
@@ -918,6 +931,10 @@ void sketch_matrices(int N, int M[], int nblocks[], int nsub, const char *wmatc_
    }
    nrows = n_selected_total;
    cout << "Total number of rows: " << nrows << endl;
+   //for (i = 0; i < nrows; i++) {
+   //   cout << ids_selected_total[i] << endl;
+   //}
+   //exit(0);
    X = new double[((long long)nrows)*maxcols];
    Xprev = new double[((long long)nrows)*ranktot];
    Xprevupd = new double[((long long)nrows)*ranktot];
