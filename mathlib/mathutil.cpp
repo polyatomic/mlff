@@ -105,7 +105,7 @@ double rp_3_0_kernel(double x1, double x2) {
    return 3.0*t1*(1.0 - t2*(0.5 - 0.1*t2));
 }
 
-// Symmetrized 3D kernel for AAA system.
+// Symmetrized 3B kernel for AAA system.
 double symmetrized_kernel3_0(double *x1, double *x2, double (*kernel)(double, double)) {
    double ret, k00, k11, k22, k01, k12, k21, k10, k20, k02;
    k00 = kernel(x1[0], x2[0]);
@@ -123,7 +123,7 @@ double symmetrized_kernel3_0(double *x1, double *x2, double (*kernel)(double, do
    return ret;
 }
 
-// Symmetrized 3D kernel for ABB system.
+// Symmetrized 3B kernel for ABB system.
 double symmetrized_kernel3_1(double *x1, double *x2, double (*kernel)(double, double)) {
    double ret;
    ret = (kernel(x1[0], x2[0])*kernel(x1[1], x2[1]) +
@@ -132,12 +132,12 @@ double symmetrized_kernel3_1(double *x1, double *x2, double (*kernel)(double, do
    return ret;
 }
 
-// (Un)symmetrized 3D kernel for ABC system.
+// (Un)symmetrized 3B kernel for ABC system.
 double symmetrized_kernel3_2(double *x1, double *x2, double (*kernel)(double, double)) {
    return kernel(x1[0], x2[0])*kernel(x1[1], x2[1])*kernel(x1[2], x2[2]);
 }
 
-// Symmetrized 4D kernel for AAAA system.
+// Symmetrized 4B kernel for AAAA system.
 double symmetrized_kernel4_0(double *x1, double *x2, double (*kernel)(double, double)) {
    double ret, k00, k11, k22, k33, k44, k55, k12, k21, k34, k43, k01, k10, k45, k54, k20, k35, k02, k53,
           k13, k24, k31, k42, k14, k23, k32, k41, k03, k52, k04, k51, k25, k30, k15, k40, k05, k50;
@@ -204,7 +204,7 @@ double symmetrized_kernel4_0(double *x1, double *x2, double (*kernel)(double, do
    return ret;
 }
 
-// Symmetrized 4D kernel for ABBB system.
+// Symmetrized 4B kernel for ABBB system.
 double symmetrized_kernel4_1(double *x1, double *x2, double (*kernel)(double, double)) {
    double ret, k00, k11, k22, k33, k44, k55, k12, k21, k34, k43, k01, k10, k45, k54, k20, k35, k02, k53;
    k00 = kernel(x1[0], x2[0]);
@@ -234,7 +234,7 @@ double symmetrized_kernel4_1(double *x1, double *x2, double (*kernel)(double, do
    return ret;
 }
 
-// Symmetrized 4D kernel for AABB system.
+// Symmetrized 4B kernel for AABB system.
 double symmetrized_kernel4_2(double *x1, double *x2, double (*kernel)(double, double)) {
    double ret;
    ret = kernel(x1[0], x2[0])*kernel(x1[5], x2[5])*
@@ -245,7 +245,7 @@ double symmetrized_kernel4_2(double *x1, double *x2, double (*kernel)(double, do
    return ret;
 }
 
-// Symmetrized 4D kernel for ABCC system.
+// Symmetrized 4B kernel for ABCC system.
 double symmetrized_kernel4_3(double *x1, double *x2, double (*kernel)(double, double)) {
    double ret;
    ret = kernel(x1[0], x2[0])*kernel(x1[5], x2[5])*

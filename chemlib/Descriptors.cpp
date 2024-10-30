@@ -153,7 +153,7 @@ void Descriptors::SetGrid(double *dmin, double *dmax, double *gmin, double step_
       m_ngp3 = new int[m_nt3];
       for (i = 0; i < m_nt3; i++) {
          p = m_pt3 + 3*i;
-         if (!ReadGridPoints(p[0], p[1], p[2], i, (string(blocks+4*(m_nt2+i)) + ".txt").c_str())) AssignGridPoints(p[0], p[1], p[2], i);
+         if (!ReadGridPoints(p[0], p[1], p[2], i, (string(blocks+5*(m_nt2+i)) + ".txt").c_str())) AssignGridPoints(p[0], p[1], p[2], i);
       }
       for (i=0,j=0; i < m_nt3; i++) {
          m_t3b[i] = j;
@@ -171,7 +171,7 @@ void Descriptors::SetGrid(double *dmin, double *dmax, double *gmin, double step_
       for (i = 0; i < m_nt4; i++) {
          p = m_pt4 + 6*i;
          // TODO: Remove sym and induce it from m_st4
-         if (!ReadGridPoints(p[0], p[1], p[2], p[3], p[4], p[5], i, (string(blocks+4*(m_nt2+m_nt3+i)) + ".txt").c_str())) AssignGridPoints(p[0], p[1], p[2], p[3], p[4], p[5], i, sym[i]);
+         if (!ReadGridPoints(p[0], p[1], p[2], p[3], p[4], p[5], i, (string(blocks+5*(m_nt2+m_nt3+i)) + ".txt").c_str())) AssignGridPoints(p[0], p[1], p[2], p[3], p[4], p[5], i, sym[i]);
       }
       for (i = 0, j = 0; i < m_nt4; i++) {
          m_t4b[i] = j;
@@ -180,7 +180,7 @@ void Descriptors::SetGrid(double *dmin, double *dmax, double *gmin, double step_
       m_ndesc += j;
    }
    for (i = 0; i < m_nt2; i++) {
-      ReadGridPoints(i, (string(blocks+4*i) + ".txt").c_str());
+      ReadGridPoints(i, (string(blocks+5*i) + ".txt").c_str());
    }
    for (i = 0, j = 0; i < m_nt2; i++) {
       m_t2b[i] = j;

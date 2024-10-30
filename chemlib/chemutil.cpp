@@ -707,22 +707,40 @@ bool calculation_prepare(PType *params, Iterator<Mol>& mols, Descriptors& descs,
       cout << Atom::GetAtomicSymbol(t2[i].v[0]) << " " << Atom::GetAtomicSymbol(t2[i].v[1]) << " " << setprecision(prec) << dmin[i] << " " << dmax[i] << " " << setprecision(oldprec) << dmax[i] - dmin[i] << " " << ngp[i] << endl;
    cout << "Grid step size (inverse): " << params->gss << endl;
    nb_total = nt2 + nt3 + nt4;
-   *blocks = new char[4*nb_total];
+   *blocks = new char[5*nb_total];
    for (i=0; i < nb_total; i++) {
-      (*blocks)[4*i] = 'g';
-      (*blocks)[4*i+3] = '\0';
+      (*blocks)[5*i] = 'g';
+      (*blocks)[5*i+4] = '\0';
    }
    for (i=0; i < nt2; i++) {
-      (*blocks)[4*i+1] = '2';
-      (*blocks)[4*i+2] = '0' + i;
+      (*blocks)[5*i+1] = '2';
+      if (i < 10) {
+         (*blocks)[5*i+2] = '0';
+         (*blocks)[5*i+3] = '0' + i;
+      } else {
+         (*blocks)[5*i+2] = '1';
+         (*blocks)[5*i+3] = '0' + (i - 10);
+      }
    }
    for (i=nt2, j=0; i < nt2+nt3; i++, j++) {
-      (*blocks)[4*i+1] = '3';
-      (*blocks)[4*i+2] = '0' + j;
+      (*blocks)[5*i+1] = '3';
+      if (j < 10) {
+         (*blocks)[5*i+2] = '0';
+         (*blocks)[5*i+3] = '0' + j;
+      } else {
+         (*blocks)[5*i+2] = '1';
+         (*blocks)[5*i+3] = '0' + (j - 10);
+      }
    }
    for (i=nt2+nt3, j=0; i < nb_total; i++, j++) {
-      (*blocks)[4*i+1] = '4';
-      (*blocks)[4*i+2] = '0' + j;
+      (*blocks)[5*i+1] = '4';
+      if (j < 10) {
+         (*blocks)[5*i+2] = '0';
+         (*blocks)[5*i+3] = '0' + j;
+      } else {
+         (*blocks)[5*i+2] = '1';
+         (*blocks)[5*i+3] = '0' + (j - 10);
+      }
    }
    descs.SetGrid(dmin, dmax, gsp, params->gss, *blocks, p4sym);
    Descriptors::SetKernel2B(params->kernel_2b);

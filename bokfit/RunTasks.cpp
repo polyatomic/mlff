@@ -81,7 +81,7 @@ void RunTasks() {
       cout << "2B descriptors selected according to closeness to training points" << endl;
       for (i = 0; i < nblocks[0]; i++) {
          cout << "Descriptors of type " << i << endl;
-         ofile.open(string(blocks+4*i) + ".txt");
+         ofile.open(string(blocks+5*i) + ".txt");
          cout << pss[i].size() << endl;
          ofile << pss[i].size() << endl;
          for (itp = pss[i].begin(); itp != pss[i].end(); itp++) {
@@ -109,7 +109,7 @@ void RunTasks() {
          }
          cout << j << endl;
          if (j > 0) {
-            ofile.open(string(blocks+4*(nblocks[0]+i)) + ".txt");
+            ofile.open(string(blocks+5*(nblocks[0]+i)) + ".txt");
             ofile << j << endl;
             for (k=0; k < j; k++) {
                ofile << ivec[k*3] << " " << ivec[k*3+1] << " " << ivec[k*3+2] << endl;
@@ -136,7 +136,7 @@ void RunTasks() {
          }
          cout << j << endl;
          if (j > 0) {
-            ofile.open(string(blocks+4*(nblocks[0]+nblocks[1]+i)) + ".txt");
+            ofile.open(string(blocks+5*(nblocks[0]+nblocks[1]+i)) + ".txt");
             ofile << j << endl;
             for (k = 0; k < j; k++) {
                ofile << ivec[k*6] << " " << ivec[k*6+1] << " " << ivec[k*6+2] << " " << ivec[k*6+3] << " " << ivec[k*6+4] << " " << ivec[k*6+5] << endl;
@@ -199,7 +199,7 @@ void RunTasks() {
       ndescs[i] = descs.GetN4BDescriptors(j);
       cout << "   type " << j << ": " << ndescs[i] << endl;
    }
-   if (!ndesc3)
+   if (!ndesc3 && !ndesc4)
       nsub = nblocks[0];
    else if (!ndesc4)
       nsub = nblocks[0] + nblocks[1];
@@ -209,16 +209,18 @@ void RunTasks() {
       if (g_params.order_by_leverages) {
          order_by_leverages(nstr, ndescs, nsub, "descs.bin", "descst.bin", ids_selected, levs, ranks, g_params.maxrows, g_params.nthreads);
          for (j = 0; j < nb_total; j++) {
-            ofile.open((string(blocks+4*j) + "s.txt").c_str());
-            for (i = 0; i < nstr; i++) ofile << ids_selected[j][i] << endl;
-            ofile.close();
+            if (ndescs[j]) {
+               ofile.open((string(blocks+5*j) + "s.txt").c_str());
+               for (i = 0; i < nstr; i++) ofile << ids_selected[j][i] << endl;
+               ofile.close();
+            }
          }
          ofile.open("ranks.txt");
          for (i = 0; i < nsub; i++) ofile << ranks[i] << endl;
          ofile.close();
       } else {
          for (j = 0; j < nb_total; j++) {
-            if (!File2Array(string(blocks+4*j) + "s.txt", ids_selected[j])) goto end;
+            if (!File2Array(string(blocks+5*j) + "s.txt", ids_selected[j])) goto end;
          }
          if (!File2Array("ranks.txt", ranks)) goto end;
          for (i=0; i < nsub; i++) {
@@ -229,15 +231,15 @@ void RunTasks() {
          for (i = 0, l = 0, m = 0; i < nsub; i++) {
             if (vars_selected[i][0] == -1) {
                ndescs_sketch[i] = ndescs[i];
-               copy_file((string(blocks+4*i) + ".txt").c_str(), (string(blocks+4*i) + "f.txt").c_str());
+               copy_file((string(blocks+5*i) + ".txt").c_str(), (string(blocks+4*i) + "f.txt").c_str());
                for (j = 0; j < ndescs_sketch[i]; j++) {
                   avgs_to_save[l] = avgs[m];
                   stdevs_to_save[l++] = stdevs[m++];
                }
             } else {
                ndescs_sketch[i] = ranks[i];
-               ifile.open((string(blocks+4*i) + ".txt").c_str(), ios::in);
-               ofile.open((string(blocks+4*i) + "f.txt").c_str(), ios::out);
+               ifile.open((string(blocks+5*i) + ".txt").c_str(), ios::in);
+               ofile.open((string(blocks+5*i) + "f.txt").c_str(), ios::out);
                getline(ifile, line, '\n');
                isstream.str(line);
                isstream >> np;
@@ -296,7 +298,7 @@ void RunTasks() {
       }
    } else {
       for (j = 0; j < nb_total; j++) {
-         if (!File2Array(string(blocks+4*j) + "s.txt", ids_selected[j])) goto end;
+         if (!File2Array(string(blocks+5*j) + "s.txt", ids_selected[j])) goto end;
       }
       if (!File2Array("ndescs_sketch.txt", ndescs)) goto end;
       ntrain = g_params.tss;

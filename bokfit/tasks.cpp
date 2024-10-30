@@ -2,7 +2,6 @@
 #include <algorithm>
 #include <thread>
 #include <string>
-#include <vector>
 #include <fstream>
 #include <set>
 #include <map>
@@ -249,8 +248,8 @@ bool calculate_descriptors(int N, int M, int olength, double *r, FunctorDaDaI *d
       matcount++;
    }
    ofile.close();
-   cerr << "Press enter to continue:";
-   std::cin.get();
+   // cerr << "Press enter to continue:";
+   // std::cin.get();
    fn = "descst.bin";
    ofile.open(fn.c_str(), ios::out | ios::binary);
    nr = M;
@@ -413,16 +412,19 @@ bool order_by_leverages(int N, int M[], int nsub, const char *wmatc_name, const 
    if (nthreads > 1) cout << "Using " << nthreads << " threads" << endl;
    cout << "Buffer size: " << bufsize << endl;
    cout << "Number of rows: " << N << endl;
+   cout << "Number of submatrices: " << nsub << endl;
    ifstream ifilet(wmatct_name, ios::in | ios::binary);
    if (!ifilet) return false;
    Kd = new double*[nsub];
    wmatct = new double*[nthreads+1];
    ntot = 0;
    Ms_max = 0;
+   Kds = 0;
    for (i=0; i < nsub; i++) {
       Ms = M[i];
       if (Ms > Ms_max) Ms_max = Ms;
-      Kds = Kd[i] = new double[Ms*Ms];
+      if (Ms) Kds = Kd[i] = new double[Ms*Ms];
+      else Kd[i] = 0;
       for (j=0; j < Ms*Ms; j++) Kds[j] = 0.0;
       ntot += Ms;
    }
@@ -433,11 +435,12 @@ bool order_by_leverages(int N, int M[], int nsub, const char *wmatc_name, const 
    for (k=0; k < nsub; k++) {
       for (i=0,start=0; i < k; i++) start += M[i];
       ntotsub = M[k];
+      if (!ntotsub) continue;
       rowsum = 0;
       npairs = 0;
       id = 0;
       matid = 0;
-      rslast = 0;
+      rslast = -1;
       crlast = 0;
       for (;;) {
          ifilet.seekg(0, ifilet.beg);
@@ -447,7 +450,7 @@ bool order_by_leverages(int N, int M[], int nsub, const char *wmatc_name, const 
             cur_rows = bufsize;
          ifilet.read((char*)&nr, sizeof(int));
          ifilet.read((char*)&nc, sizeof(int));
-         ifilet.seekg((rowsum+start)*N*sizeof(double), ifilet.cur);
+         ifilet.seekg(((long long)(rowsum+start))*N*sizeof(double), ifilet.cur);
          dp1 = wmatct[matid];
          for (i = 0; i < cur_rows; i++) {
             for (j = 0; j < N; j++) ifilet.read((char*)&dp1[i*N+j], sizeof(double));
@@ -551,8 +554,10 @@ bool order_by_leverages(int N, int M[], int nsub, const char *wmatc_name, const 
       goto end;
    }
    start = 0;
+   for (k=0; k < nsub; k++) ranks[k] = 0;
    for (k=0; k < nsub; k++) {
       Ms = M[k];
+      if (!Ms) continue;
       Kds = Kd[k];
       cout << "Starting eigendecomposition(" << k << ")" << endl;
       cout << "eigs returned " << eigs(Kds, evec, eval, Ms) << endl;
@@ -624,7 +629,7 @@ end:
    delete [] sevec;
    delete [] eval;
    delete [] evec;
-   for (i=0; i < nthreads; i++) delete [] wmatct[i];
+   for (i=0; i <= nthreads; i++) delete [] wmatct[i];
    delete [] wmatc;
    for (i=0; i < nsub; i++) delete [] Kd[i];
    delete [] wmatct;
@@ -931,10 +936,6 @@ void sketch_matrices(int N, int M[], int nblocks[], int nsub, const char *wmatc_
    }
    nrows = n_selected_total;
    cout << "Total number of rows: " << nrows << endl;
-   //for (i = 0; i < nrows; i++) {
-   //   cout << ids_selected_total[i] << endl;
-   //}
-   //exit(0);
    X = new double[((long long)nrows)*maxcols];
    Xprev = new double[((long long)nrows)*ranktot];
    Xprevupd = new double[((long long)nrows)*ranktot];
