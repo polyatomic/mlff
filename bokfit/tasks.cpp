@@ -769,6 +769,110 @@ void sketch_matrix(int nrows, int ncols, int ncols2, const double *X, const doub
    delete [] X_selected_t;
 }
 
+void sketch_matrix2(int nrows, int ncols, int ncols2, const double* X, const double* X2, int* selected_variables, int nsel_max, int& nsel_real, int thr_id) {
+   int i, j, jj, ntot, pcount, nsel, imax, imin;
+   long long il;
+   int *varids_sorted, *priority_queue;
+   double rssmax, rssmin, rss;
+   double *X_selected_t, *X_selected, *u, *s, *vt, *priority_queue_weights, *dp1;
+   double *utb;
+   double *yy;
+   double *b;
+   double *sr;
+   cout << thr_id << ": sketch_matrix:" << endl;
+   cout << thr_id << ":    nrows: " << nrows << endl;
+   cout << thr_id << ":    ncols: " << ncols << endl;
+   cout << thr_id << ":    ncols2: " << ncols2 << endl;
+   X_selected_t = new double[((long long)nrows)*(nsel_max+ncols2)];
+   X_selected = new double[((long long)nrows)*(nsel_max+ncols2)];
+   u = new double[((long long)nrows)*(nsel_max+ncols2)];
+   s = new double[nsel_max+ncols2];
+   vt = new double[(nsel_max+ncols2)*(nsel_max+ncols2)];
+   priority_queue_weights = new double[ncols];
+   priority_queue = new int[ncols];
+   auto rule2 = [priority_queue_weights](int i, int j) -> bool { return priority_queue_weights[i] > priority_queue_weights[j]; };
+   varids_sorted = new int[ncols];
+   sr = new double[nrows];
+   utb = new double[nsel_max+ncols2];
+   yy = new double[nsel_max+ncols2];
+   b = new double[nsel_max+ncols2];
+   for (il=0; il < ((long long)nrows)*ncols2; il++) X_selected_t[il] = X2[il];
+   for (i=0; i < nrows; i++) {
+      for (j = 0; j < ncols2; j++) {
+         X_selected[j*((long long)nrows)+i] = X2[i*((long long)ncols2)+j];
+      }
+   }
+   // Order variables of X according to correlation with X2 variables
+   // Apply lazy greedy
+   ntot = ncols2;
+   nsel = 0;
+   svd(X_selected_t, u, s, vt, nrows, ntot, true);
+   for (i = 0; i < ncols; i++) priority_queue_weights[i] = 0.0;
+   for (i = 0, pcount = 0; i < ncols; i++) {
+      priority_queue[pcount++] = i;
+      for (j = 0; j < nrows; j++) sr[j] = X[j*((long long)ncols)+i];
+      rss = find_prediction_rss(X_selected_t, u, s, vt, nrows, ntot, sr, utb, yy, b);
+      priority_queue_weights[i] = rss;
+   }
+   sort(priority_queue, priority_queue + pcount, rule2);
+   imax = priority_queue[0];
+   rssmax = priority_queue_weights[imax];
+   pcount--;
+   for (i = 0; i < pcount; i++) priority_queue[i] = priority_queue[i+1];
+   cout << thr_id << ": Variable(" << nsel + 1 << "): " << imax << " " << rssmax << endl;
+   varids_sorted[nsel] = imax;
+   dp1 = X_selected + ((long long)ntot)*nrows;
+   for (i = 0; i < nrows; i++) dp1[i] = X[i*((long long)ncols)+imax];
+   nsel++;
+   ntot++;
+   for (i = 0; i < ntot; i++) {
+      for (j = 0; j < nrows; j++) X_selected_t[j*((long long)ntot)+i] = X_selected[i*((long long)nrows)+j];
+   }
+   svd(X_selected_t, u, s, vt, nrows, ntot, true);
+   for (;;) {
+      jj = priority_queue[0];
+      for (i = 0; i < nrows; i++) sr[i] = X[i*((long long)ncols)+jj];
+      rss = find_prediction_rss(X_selected_t, u, s, vt, nrows, ntot, sr, utb, yy, b);
+      priority_queue_weights[jj] = rss;
+      sort(priority_queue, priority_queue + pcount, rule2);
+      if (priority_queue[0] != jj) continue;
+      imax = priority_queue[0];
+      imin = priority_queue[pcount-1];
+      rssmax = priority_queue_weights[imax];
+      rssmin = priority_queue_weights[imin];
+      pcount--;
+      for (i = 0; i < pcount; i++) priority_queue[i] = priority_queue[i+1];
+      cout << thr_id << ": Variable(" << nsel + 1 << "): " << imax << " " << rssmax << " " << rssmin << endl;
+      varids_sorted[nsel] = imax;
+      dp1 = X_selected + ((long long)ntot)*nrows;
+      for (i = 0; i < nrows; i++) dp1[i] = X[i*((long long)ncols)+imax];
+      nsel++;
+      ntot++;
+      sort(varids_sorted, varids_sorted + nsel);
+      if (nsel == nsel_max || rssmax/nrows < 1.0e-15) {
+         nsel_real = nsel;
+         for (i = 0; i < nsel; i++) selected_variables[i] = varids_sorted[i];
+         break;
+      }
+      for (i = 0; i < ntot; i++) {
+         for (j = 0; j < nrows; j++) X_selected_t[j*((long long)ntot)+i] = X_selected[i*((long long)nrows)+j];
+      }
+      svd(X_selected_t, u, s, vt, nrows, ntot, true);
+   }
+   delete [] b;
+   delete [] yy;
+   delete [] utb;
+   delete [] sr;
+   delete [] varids_sorted;
+   delete [] priority_queue;
+   delete [] priority_queue_weights;
+   delete [] vt;
+   delete [] s;
+   delete [] u;
+   delete [] X_selected;
+   delete [] X_selected_t;
+}
+
 void sketch_matrix(int nrows, int ncols, int ncols_retain, const double *X, const double *y, int *selected_variables) {
    double betamax, beta, betamin, rss, rssmax;
    double *dvec, *X_selected, *X_selected_t, *dp1, *u, *vt, *s, *priority_queue_weights, *sr, *utb, *yy, *b;
@@ -900,7 +1004,7 @@ void sketch_matrix(int nrows, int ncols, int ncols_retain, const double *X, cons
 // ranks - rank for each block
 // n_test_rows - number of rows to select from each block
 // nthreads - number of threads to use
-// selected_variables
+// selected_variables - selected column ids for each block
 void sketch_matrices(int N, int M[], int nblocks[], int nsub, const char *wmatc_name, int *ids_selected[], int ranks[], int n_test_rows, int nthreads, int *selected_variables[]) {
    int i, j, k, Mtot, ranktot, maxcols, mat_id, nr, nc, r_skip1, nrows, n_selected_total, r_skip2, ncols, ncolsprev, ncolsnew, ncolsprevupd, nsel;
    long long il;
@@ -1015,6 +1119,149 @@ void sketch_matrices(int N, int M[], int nblocks[], int nsub, const char *wmatc_
    delete [] ids_selected_total_cp;
    delete [] ids_selected_total;
    delete [] ids_selectedo;
+}
+
+void sketch_matrices2(int N, int M[], int nblocks[], int nsub, const char *wmatc_name, int *ids_selected[], int ranks[], int n_test_rows, int nthreads, int *selected_variables[]) {
+   int i, j, k, nr, nc, nrows, n_selected_total, mat_id, ncols, r_skip1, r_skip2, Mtot, rs, ncolsprevupd, ranktot, ncolsnew, ncolsprev, id, mid;
+   long long il;
+   int *ids_selectedo, *ids_selected_total, *ids_selected_total_cp, *idit, *sm_order, *mat_ids, *nsels;
+   double *Xprevupd, *Xtmp, *Xprev, *dp;
+   double **X;
+   thread threads[MAX_THREADS];
+   cout << "#####   Starting sketch_matrices   #####\n";
+   cout << "Number of rows: " << N << endl;
+   cout << "Number of rows to use: " << n_test_rows << endl;
+   cout << "Number of threads: " << nthreads << endl;
+   cout << "Numbers of columns and corresponding ranks" << endl;
+   sm_order = new int[nblocks[2]];
+   for (i=0, Mtot=0, ranktot=0; i < nsub; i++) {
+      if (i >= nblocks[0] + nblocks[1]) sm_order[i-nblocks[0]-nblocks[1]] = i;
+      else ranktot += ranks[i];
+      cout << M[i] << " " << ranks[i] << endl;
+      Mtot += M[i];
+   }
+   sort(sm_order, sm_order+nblocks[2], [M](int i, int j) -> bool { return M[i] > M[j]; });
+   ifstream ifile(wmatc_name, ios::in | ios::binary);
+   if (!ifile) {
+      delete [] sm_order;
+      return;
+   }
+   ids_selectedo = new int[n_test_rows];
+   ids_selected_total = new int[nsub*n_test_rows];
+   ids_selected_total_cp = new int[nsub*n_test_rows];
+   ifile.read((char*)&nr, sizeof(int));
+   ifile.read((char*)&nc, sizeof(int));
+   nrows = n_test_rows;
+   for (i = 0; i < nrows; i++) ids_selected_total_cp[i] = ids_selected[0][i];
+   sort(ids_selected_total_cp, ids_selected_total_cp + nrows);
+   n_selected_total = nrows;
+   for (mat_id = 1; mat_id < nsub; mat_id++) {
+      for (i = 0; i < nrows; i++) ids_selectedo[i] = ids_selected[mat_id][i];
+      sort(ids_selectedo, ids_selectedo + nrows);
+      idit = set_union(ids_selectedo, ids_selectedo + nrows, ids_selected_total_cp, ids_selected_total_cp + n_selected_total, ids_selected_total);
+      n_selected_total = idit - ids_selected_total;
+      for (i=0; i < n_selected_total; i++) ids_selected_total_cp[i] = ids_selected_total[i];
+   }
+   nrows = n_selected_total;
+   cout << "Total number of rows: " << nrows << endl;
+   X = new double*[nthreads];
+   for (i = 0; i < nthreads; i++) {
+      X[i] = new double[((long long)nrows)*M[sm_order[i]]];
+   }
+   Xprev = new double[((long long)nrows)*ranktot];
+   Xprevupd = new double[((long long)nrows)*ranktot];
+   Xtmp = new double[((long long)nrows)*ranktot];
+   mat_ids = new int[nthreads];
+   nsels = new int[nthreads];
+   rs = 0;
+   for (id = 0; id < nsub; id++) {
+      mat_id = id;
+      if (id >= nblocks[0]+nblocks[1]) mat_id = sm_order[id-nblocks[0]-nblocks[1]];
+      ncols = M[mat_id];
+      for (i=0, r_skip1=0; i < mat_id; i++) r_skip1 += M[i];
+      for (i = mat_id + 1, r_skip2 = 0; i < nsub; i++) r_skip2 += M[i];
+      dp = X[rs];
+      for (i = 0, j = 0; i < N; i++) {
+         if (j < nrows && ids_selected_total[j] == i) {
+            ifile.seekg(r_skip1*sizeof(double), ifile.cur);
+            for (k=0; k < ncols; k++) ifile.read((char*)&dp[((long long)j)*ncols+k], sizeof(double));
+            j++;
+            if (j == nrows) break;
+            ifile.seekg(r_skip2*sizeof(double), ifile.cur);
+         } else {
+            ifile.seekg(Mtot*sizeof(double), ifile.cur);
+         }
+      }
+      ifile.seekg(0, ifile.beg);
+      ifile.read((char*)&nr, sizeof(int));
+      ifile.read((char*)&nc, sizeof(int));
+      if (mat_id == 0) {
+         for (il=0; il < ((long long)ncols)*nrows; il++) Xprevupd[il] = dp[il];
+         ncolsprevupd = ncols;
+      } else if (mat_id < nblocks[0]) {
+         ncolsnew = ncolsprevupd + ncols;
+         for (il = 0; il < ((long long)nrows)*ncolsprevupd; il++) Xtmp[il] = Xprevupd[il];
+         for (i = 0; i < nrows; i++) {
+            for (j = 0; j < ncolsprevupd; j++) {
+               Xprevupd[i*((long long)ncolsnew)+j] = Xtmp[i*((long long)ncolsprevupd)+j];
+            }
+            for (j = 0; j < ncols; j++) {
+               Xprevupd[i*((long long)ncolsnew)+ncolsprevupd+j] = dp[((long long)i)*ncols+j];
+            }
+         }
+         if (mat_id == nblocks[0]-1) {
+            for (il=0; il < ((long long)ncolsnew)*nrows; il++) Xprev[il] = Xprevupd[il];
+            ncolsprev = ncolsnew;
+         }
+         ncolsprevupd = ncolsnew;
+      } else {
+         mat_ids[rs] = mat_id;
+         rs++;
+         if (rs == nthreads || id == nblocks[0]+nblocks[1]-1 || id == nsub-1) {
+            // X[0] until X[rs-1] now contain matrices
+            // Start computations here
+            for (i = 0; i < rs; i++) {
+               threads[i] = thread(sketch_matrix2, nrows, M[mat_ids[i]], ncolsprev, X[i], Xprev, selected_variables[mat_ids[i]], ranks[mat_ids[i]], std::ref(nsels[i]), i);
+            }
+            for (i=0; i < rs; i++) threads[i].join();
+            for (mid=0; mid < rs; mid++) {
+               ranks[mat_ids[mid]] = nsels[mid];
+               ncolsnew = ncolsprevupd + ranks[mat_ids[mid]];
+               for (il = 0; il < ((long long)nrows)*ncolsprevupd; il++) Xtmp[il] = Xprevupd[il];
+               dp = X[mid];
+               for (i = 0; i < nrows; i++) {
+                  for (j = 0; j < ncolsprevupd; j++) {
+                     Xprevupd[i*((long long)ncolsnew)+j] = Xtmp[i*((long long)ncolsprevupd)+j];
+                  }
+                  for (j = 0; j < ranks[mat_ids[mid]]; j++) {
+                     Xprevupd[i*((long long)ncolsnew)+ncolsprevupd+j] = dp[i*((long long)ncols)+selected_variables[mat_ids[mid]][j]];
+                  }
+               }
+               if (mid == rs-1 && id == nblocks[0]+nblocks[1]-1) {
+                  for (il = 0; il < ncolsnew*((long long)nrows); il++) Xprev[il] = Xprevupd[il];
+                  ncolsprev = ncolsnew;
+               }
+               ncolsprevupd = ncolsnew;
+            }
+            rs = 0;
+         }
+      }
+   }
+   cout << "#####   Finished sketch_matrices   #####\n";
+   ifile.close();
+   delete [] nsels;
+   delete [] mat_ids;
+   delete [] Xtmp;
+   delete [] Xprevupd;
+   delete [] Xprev;
+   for (i = 0; i < nthreads; i++) {
+      delete [] X[i];
+   }
+   delete [] X;
+   delete [] ids_selected_total_cp;
+   delete [] ids_selected_total;
+   delete [] ids_selectedo;
+   delete [] sm_order;
 }
 
 bool calculate_linear_regression(int N, int M, double *wmatc, int *ids, int nt, double *Yc) {

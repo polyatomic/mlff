@@ -227,11 +227,12 @@ void RunTasks() {
             vars_selected[i] = new int[ranks[i]];
             for (j = 0; j < ranks[i]; j++) vars_selected[i][j] = -1;
          }
-         sketch_matrices(nstr, ndescs, nblocks, nsub, "descs.bin", ids_selected, ranks, g_params.nsketch, g_params.nthreads, vars_selected);
+         //sketch_matrices(nstr, ndescs, nblocks, nsub, "descs.bin", ids_selected, ranks, g_params.nsketch, g_params.nthreads, vars_selected);
+         sketch_matrices2(nstr, ndescs, nblocks, nsub, "descs.bin", ids_selected, ranks, g_params.nsketch, g_params.nthreads, vars_selected);
          for (i = 0, l = 0, m = 0; i < nsub; i++) {
             if (vars_selected[i][0] == -1) {
                ndescs_sketch[i] = ndescs[i];
-               copy_file((string(blocks+5*i) + ".txt").c_str(), (string(blocks+4*i) + "f.txt").c_str());
+               copy_file((string(blocks+5*i) + ".txt").c_str(), (string(blocks+5*i) + "f.txt").c_str());
                for (j = 0; j < ndescs_sketch[i]; j++) {
                   avgs_to_save[l] = avgs[m];
                   stdevs_to_save[l++] = stdevs[m++];
