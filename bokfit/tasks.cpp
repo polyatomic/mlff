@@ -1122,9 +1122,10 @@ void sketch_matrices(int N, int M[], int nblocks[], int nsub, const char *wmatc_
 }
 
 void sketch_matrices2(int N, int M[], int nblocks[], int nsub, const char *wmatc_name, int *ids_selected[], int ranks[], int n_test_rows, int nthreads, int *selected_variables[]) {
-   int i, j, k, nr, nc, nrows, n_selected_total, mat_id, ncols, r_skip1, r_skip2, Mtot, rs, ncolsprevupd, ranktot, ncolsnew, ncolsprev, id, mid;
+   int i, j, k, nr, nc, nrows, mat_id, ncols, r_skip1, r_skip2, Mtot, rs, ncolsprevupd, ranktot, ncolsnew, ncolsprev, id, mid;
    long long il;
-   int *ids_selectedo, *ids_selected_total, *ids_selected_total_cp, *idit, *sm_order, *mat_ids, *nsels;
+   bool done;
+   int *ids_selected_total, *sm_order, *mat_ids, *nsels;
    double *Xprevupd, *Xtmp, *Xprev, *dp;
    double **X;
    thread threads[MAX_THREADS];
@@ -1146,24 +1147,39 @@ void sketch_matrices2(int N, int M[], int nblocks[], int nsub, const char *wmatc
       delete [] sm_order;
       return;
    }
-   ids_selectedo = new int[n_test_rows];
-   ids_selected_total = new int[nsub*n_test_rows];
-   ids_selected_total_cp = new int[nsub*n_test_rows];
+   // ids_selectedo = new int[n_test_rows];
+   // ids_selected_total = new int[nsub*n_test_rows];
+   ids_selected_total = new int[n_test_rows];
+   // ids_selected_total_cp = new int[nsub*n_test_rows];
    ifile.read((char*)&nr, sizeof(int));
    ifile.read((char*)&nc, sizeof(int));
    nrows = n_test_rows;
-   for (i = 0; i < nrows; i++) ids_selected_total_cp[i] = ids_selected[0][i];
-   sort(ids_selected_total_cp, ids_selected_total_cp + nrows);
-   n_selected_total = nrows;
-   for (mat_id = 1; mat_id < nsub; mat_id++) {
-      for (i = 0; i < nrows; i++) ids_selectedo[i] = ids_selected[mat_id][i];
-      sort(ids_selectedo, ids_selectedo + nrows);
-      idit = set_union(ids_selectedo, ids_selectedo + nrows, ids_selected_total_cp, ids_selected_total_cp + n_selected_total, ids_selected_total);
-      n_selected_total = idit - ids_selected_total;
-      for (i=0; i < n_selected_total; i++) ids_selected_total_cp[i] = ids_selected_total[i];
+   // for (i = 0; i < nrows; i++) ids_selected_total_cp[i] = ids_selected[0][i];
+   // sort(ids_selected_total_cp, ids_selected_total_cp + nrows);
+   // n_selected_total = nrows;
+   // for (mat_id = 1; mat_id < nsub; mat_id++) {
+      // for (i = 0; i < nrows; i++) ids_selectedo[i] = ids_selected[mat_id][i];
+      // sort(ids_selectedo, ids_selectedo + nrows);
+      // idit = set_union(ids_selectedo, ids_selectedo + nrows, ids_selected_total_cp, ids_selected_total_cp + n_selected_total, ids_selected_total);
+      // n_selected_total = idit - ids_selected_total;
+      // for (i=0; i < n_selected_total; i++) ids_selected_total_cp[i] = ids_selected_total[i];
+   // }
+   // nrows = n_selected_total;
+   // cout << "Total number of rows: " << nrows << endl;
+   // Create ids_selected_total with nrows items
+   set<int> ids_unique;
+   done = false;
+   for (i = 0; i < nrows; i++) {
+      for (j = 0; j < nsub; j++) {
+         ids_unique.insert(ids_selected[j][i]);
+         if (ids_unique.size() == nrows) {
+            done = true;
+            break;
+         }
+      }
+      if (done) break;
    }
-   nrows = n_selected_total;
-   cout << "Total number of rows: " << nrows << endl;
+   copy(ids_unique.begin(), ids_unique.end(), ids_selected_total);
    X = new double*[nthreads];
    for (i = 0; i < nthreads; i++) {
       X[i] = new double[((long long)nrows)*M[sm_order[i]]];
@@ -1258,9 +1274,9 @@ void sketch_matrices2(int N, int M[], int nblocks[], int nsub, const char *wmatc
       delete [] X[i];
    }
    delete [] X;
-   delete [] ids_selected_total_cp;
+   // delete [] ids_selected_total_cp;
    delete [] ids_selected_total;
-   delete [] ids_selectedo;
+   // delete [] ids_selectedo;
    delete [] sm_order;
 }
 
