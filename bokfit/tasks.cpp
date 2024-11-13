@@ -770,10 +770,10 @@ void sketch_matrix(int nrows, int ncols, int ncols2, const double *X, const doub
 }
 
 void sketch_matrix2(int nrows, int ncols, int ncols2, const double* X, const double* X2, int* selected_variables, int nsel_max, int& nsel_real, int thr_id) {
-   int i, j, jj, ntot, pcount, nsel, imax, imin;
+   int i, j, jj, ntot, pcount, nsel, imax;
    long long il;
    int *varids_sorted, *priority_queue;
-   double rssmax, rssmin, rss;
+   double rssmax, rss;
    double *X_selected_t, *X_selected, *u, *s, *vt, *priority_queue_weights, *dp1;
    double *utb;
    double *yy;
@@ -837,12 +837,10 @@ void sketch_matrix2(int nrows, int ncols, int ncols2, const double* X, const dou
       sort(priority_queue, priority_queue + pcount, rule2);
       if (priority_queue[0] != jj) continue;
       imax = priority_queue[0];
-      imin = priority_queue[pcount-1];
       rssmax = priority_queue_weights[imax];
-      rssmin = priority_queue_weights[imin];
       pcount--;
       for (i = 0; i < pcount; i++) priority_queue[i] = priority_queue[i+1];
-      cout << thr_id << ": Variable(" << nsel + 1 << "): " << imax << " " << rssmax << " " << rssmin << endl;
+      cout << thr_id << ": Variable(" << nsel + 1 << "): " << imax << " " << rssmax << endl;
       varids_sorted[nsel] = imax;
       dp1 = X_selected + ((long long)ntot)*nrows;
       for (i = 0; i < nrows; i++) dp1[i] = X[i*((long long)ncols)+imax];
@@ -1147,26 +1145,10 @@ void sketch_matrices2(int N, int M[], int nblocks[], int nsub, const char *wmatc
       delete [] sm_order;
       return;
    }
-   // ids_selectedo = new int[n_test_rows];
-   // ids_selected_total = new int[nsub*n_test_rows];
    ids_selected_total = new int[n_test_rows];
-   // ids_selected_total_cp = new int[nsub*n_test_rows];
    ifile.read((char*)&nr, sizeof(int));
    ifile.read((char*)&nc, sizeof(int));
    nrows = n_test_rows;
-   // for (i = 0; i < nrows; i++) ids_selected_total_cp[i] = ids_selected[0][i];
-   // sort(ids_selected_total_cp, ids_selected_total_cp + nrows);
-   // n_selected_total = nrows;
-   // for (mat_id = 1; mat_id < nsub; mat_id++) {
-      // for (i = 0; i < nrows; i++) ids_selectedo[i] = ids_selected[mat_id][i];
-      // sort(ids_selectedo, ids_selectedo + nrows);
-      // idit = set_union(ids_selectedo, ids_selectedo + nrows, ids_selected_total_cp, ids_selected_total_cp + n_selected_total, ids_selected_total);
-      // n_selected_total = idit - ids_selected_total;
-      // for (i=0; i < n_selected_total; i++) ids_selected_total_cp[i] = ids_selected_total[i];
-   // }
-   // nrows = n_selected_total;
-   // cout << "Total number of rows: " << nrows << endl;
-   // Create ids_selected_total with nrows items
    set<int> ids_unique;
    done = false;
    for (i = 0; i < nrows; i++) {
@@ -1242,22 +1224,24 @@ void sketch_matrices2(int N, int M[], int nblocks[], int nsub, const char *wmatc
             for (i=0; i < rs; i++) threads[i].join();
             for (mid=0; mid < rs; mid++) {
                ranks[mat_ids[mid]] = nsels[mid];
-               ncolsnew = ncolsprevupd + ranks[mat_ids[mid]];
-               for (il = 0; il < ((long long)nrows)*ncolsprevupd; il++) Xtmp[il] = Xprevupd[il];
-               dp = X[mid];
-               for (i = 0; i < nrows; i++) {
-                  for (j = 0; j < ncolsprevupd; j++) {
-                     Xprevupd[i*((long long)ncolsnew)+j] = Xtmp[i*((long long)ncolsprevupd)+j];
+               if (id <= nblocks[0]+nblocks[1]-1) {
+                  ncolsnew = ncolsprevupd + ranks[mat_ids[mid]];
+                  for (il = 0; il < ((long long)nrows)*ncolsprevupd; il++) Xtmp[il] = Xprevupd[il];
+                  dp = X[mid];
+                  for (i = 0; i < nrows; i++) {
+                     for (j = 0; j < ncolsprevupd; j++) {
+                        Xprevupd[i*((long long)ncolsnew)+j] = Xtmp[i*((long long)ncolsprevupd)+j];
+                     }
+                     for (j = 0; j < ranks[mat_ids[mid]]; j++) {
+                        Xprevupd[i*((long long)ncolsnew)+ncolsprevupd+j] = dp[i*((long long)ncols)+selected_variables[mat_ids[mid]][j]];
+                     }
                   }
-                  for (j = 0; j < ranks[mat_ids[mid]]; j++) {
-                     Xprevupd[i*((long long)ncolsnew)+ncolsprevupd+j] = dp[i*((long long)ncols)+selected_variables[mat_ids[mid]][j]];
+                  if (mid == rs-1 && id == nblocks[0]+nblocks[1]-1) {
+                     for (il = 0; il < ncolsnew*((long long)nrows); il++) Xprev[il] = Xprevupd[il];
+                     ncolsprev = ncolsnew;
                   }
+                  ncolsprevupd = ncolsnew;
                }
-               if (mid == rs-1 && id == nblocks[0]+nblocks[1]-1) {
-                  for (il = 0; il < ncolsnew*((long long)nrows); il++) Xprev[il] = Xprevupd[il];
-                  ncolsprev = ncolsnew;
-               }
-               ncolsprevupd = ncolsnew;
             }
             rs = 0;
          }
@@ -1274,9 +1258,7 @@ void sketch_matrices2(int N, int M[], int nblocks[], int nsub, const char *wmatc
       delete [] X[i];
    }
    delete [] X;
-   // delete [] ids_selected_total_cp;
    delete [] ids_selected_total;
-   // delete [] ids_selectedo;
    delete [] sm_order;
 }
 
