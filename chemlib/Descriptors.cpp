@@ -24,6 +24,7 @@ m_na(0),
 m_nt2(0),
 m_t2(0),
 m_ngp2(0),
+m_ngp2_store(0),
 m_svp2(0),
 m_ndesc(0),
 m_na2(0),
@@ -55,6 +56,7 @@ m_use_inverse_space(false) {
 Descriptors::~Descriptors() {
    delete [] m_t2;
    delete [] m_ngp2;
+   delete [] m_ngp2_store;
    delete [] m_dist;
    delete [] m_t2b;
    delete [] m_t3;
@@ -83,6 +85,9 @@ bool Descriptors::Init(int na, int nt2, int *t2, int nt3, int *st3, int *t3, int
    delete [] m_ngp2;
    m_ngp2 = new int[nt2];
    for (i=0; i < nt2; i++) m_ngp2[i] = ngp[i];
+   delete [] m_ngp2_store;
+   m_ngp2_store = new int[nt2];
+   for (i=0; i < nt2; i++) m_ngp2_store[i] = ngp[i];
    delete [] m_dist;
    m_dist = new double[nthreads*m_na2];
    delete [] m_t2b;
@@ -126,6 +131,8 @@ void Descriptors::SetGrid(double *dmin, double *dmax, double *gmin, double step_
    m_svp2 = new double*[m_nt2];
    for (i=0; i < m_nt2; i++) m_svp2[i] = 0;
    stp = step_size;
+   // Reinitialize m_ngp2 because we may have changed it during previous call to SetGrid
+   for (i=0; i < m_nt2; i++) m_ngp2[i] = m_ngp2_store[i];
    for (i=0; i < m_nt2; i++) {
       //b = 1.0/dmax[i];
       //e = 1.0/dmin[i];

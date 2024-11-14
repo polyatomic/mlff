@@ -492,9 +492,9 @@ int GetSym(Quadruplet& q) {
    return 0;
 }
 
-bool calculation_prepare(PType *params, Iterator<Mol>& mols, Descriptors& descs, int& nstr, int& n, double*& v, double*& Y, int nblocks[], char **blocks) {
-   double *dmin, *dmax, *rcoords, *gsp;
-   int *types2, *types3, *stypes3, *types4, *stypes4, *ngp, *ptypes3, *ptypes4, *p4sym;
+bool calculation_prepare(PType *params, Iterator<Mol>& mols, Descriptors& descs, int& nstr, int& n, double*& v, double*& Y, int nblocks[], char **blocks, double **gsp, int **p4sym) {
+   double *dmin, *dmax, *rcoords;
+   int *types2, *types3, *stypes3, *types4, *stypes4, *ngp, *ptypes3, *ptypes4;
    int i, j, k, l, m, o, na, nt1, nt2, nt3, tp, na3, na4, nt4, ii, jj, kk, nb_total;
    vector<string> tkns, tkns2;
    vector<int> t1;
@@ -632,11 +632,11 @@ bool calculation_prepare(PType *params, Iterator<Mol>& mols, Descriptors& descs,
    types4 = new int[7*na4];
    stypes4 = new int[nt4];
    ptypes4 = new int[nt4*6];
-   p4sym = new int[nt4];
+   *p4sym = new int[nt4];
    for (i = 0; i < nt4; i++) {
       stypes4[i] = GetSubType(t4[i]);
       GetPairTypes(t4[i], t2, ptypes4+i*6);
-      p4sym[i] = GetSym(t4[i]);
+      (*p4sym)[i] = GetSym(t4[i]);
    }
    for (i = 0, o = 0; i < na-3; i++) {
       ii = mols[0].GetAtomicNumber(i);
@@ -660,7 +660,7 @@ bool calculation_prepare(PType *params, Iterator<Mol>& mols, Descriptors& descs,
       }
    }
    ngp = new int[nt2];
-   gsp = nullptr;
+   *gsp = nullptr;
    tkns = Tokenize(params->ngp, "\r\n");
    if (tkns.size() != nt2) {
       cerr << "Input error reading NUMBER_OF_GRID_POINTS" << endl;
@@ -693,7 +693,7 @@ bool calculation_prepare(PType *params, Iterator<Mol>& mols, Descriptors& descs,
          goto end;
       }
    }
-   gsp = new double[nt2];
+   *gsp = new double[nt2];
    tkns = Tokenize(params->gsp, "\r\n");
    if (tkns.size() != nt2) {
       cerr << "Input error reading GRID_START_POINTS" << endl;
@@ -701,7 +701,7 @@ bool calculation_prepare(PType *params, Iterator<Mol>& mols, Descriptors& descs,
       goto end;
    }
    for (i = 0; i < nt2; i++)
-      gsp[i] = atof(tkns[i].c_str());
+      (*gsp)[i] = atof(tkns[i].c_str());
    cout << "Atom type pairs, minimum and maximum distances, max-min and number of grid points:" << endl;
    for (i = 0; i < nt2; i++)
       cout << Atom::GetAtomicSymbol(t2[i].v[0]) << " " << Atom::GetAtomicSymbol(t2[i].v[1]) << " " << setprecision(prec) << dmin[i] << " " << dmax[i] << " " << setprecision(oldprec) << dmax[i] - dmin[i] << " " << ngp[i] << endl;
@@ -742,14 +742,12 @@ bool calculation_prepare(PType *params, Iterator<Mol>& mols, Descriptors& descs,
          (*blocks)[5*i+3] = '0' + (j - 10);
       }
    }
-   descs.SetGrid(dmin, dmax, gsp, params->gss, *blocks, p4sym);
+   descs.SetGrid(dmin, dmax, *gsp, params->gss, *blocks, *p4sym);
    Descriptors::SetKernel2B(params->kernel_2b);
    Descriptors::SetKernel3B(params->kernel_3b);
    Descriptors::SetKernel4B(params->kernel_4b);
 end:
-   delete [] gsp;
    delete [] ngp;
-   delete [] p4sym;
    delete [] ptypes4;
    delete [] stypes4;
    delete [] types4;

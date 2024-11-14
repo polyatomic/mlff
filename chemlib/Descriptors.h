@@ -57,6 +57,7 @@ private:
    int *m_pt3;       // Pair types for each triplet type
    int *m_pt4;       // Pair types for each quadruplet type
    int *m_ngp2;      // Number of grid points for each atom type pair
+   int *m_ngp2_store;// Originally assigned m_ngp2
    int *m_ngp3;      // Number of grid points for each atom type triplet
    int *m_ngp4;      // Number of grid points for each atom type quadruplet
    double **m_svp2;  // Matrix of pair grid points

@@ -10,7 +10,8 @@ using std::ofstream;
 
 void RunTasks() {
    int i, j, k, nstr, n;
-   double *Y, *v, *rcoords;
+   double *Y, *v, *rcoords, *gsp;
+   int *p4sym;
    int nblocks[3];
    char *blocks;
    set<int> *pss = nullptr;
@@ -25,10 +26,11 @@ void RunTasks() {
    vector<int> ivec;
    set<int>::iterator itp;
    ofstream ofile;
-   Y = v = 0;
+   Y = v = gsp = 0;
    blocks = 0;
+   p4sym = 0;
    descs.SetUseInverseSpace(g_params.uis);
-   if (!calculation_prepare(&g_params, mols, descs, nstr, n, v, Y, nblocks, &blocks)) goto end;
+   if (!calculation_prepare(&g_params, mols, descs, nstr, n, v, Y, nblocks, &blocks, &gsp, &p4sym)) goto end;
    pss = new set<int>[nblocks[0]];
    tss = new set<Triplet, TripletCompare>[nblocks[1]];
    tss_ref = new set<Triplet, TripletCompare>[nblocks[1]];
@@ -99,6 +101,8 @@ end:
    delete [] tss;
    delete [] pss;
    delete [] blocks;
+   delete [] p4sym;
+   delete [] gsp;
    delete [] v;
    delete [] Y;
 }
