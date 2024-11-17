@@ -9,7 +9,7 @@ using std::cout;
 using std::endl;
 
 void RunTasks() {
-   int i, j, nstr, n, ndesc, nbtot, ndesc_block;
+   int i, j, k, nstr, n, ndesc, nbtot, ndesc_block;
    double *v, *Y, *stdevs, *avgs, *gsp;
    int *p4sym;
    int nblocks[3] = {};
@@ -44,35 +44,17 @@ void RunTasks() {
          }
       };
       // Calculate each descriptor block
-      for (i = 0, j = 0; i < nblocks[0]; i++) {
-         select_block(j);
-         descs.SetGrid(nullptr, nullptr, gsp, g_params.gss, blockscp, p4sym);
-         ndesc_block = descs.GetNDescriptors();
-         cout << "Descriptors in block " << &blockscp[5*j] << ": " << ndesc_block << endl;
-         calculate_descriptors(nstr, ndesc_block, n, v, &dcalc, stdevs, avgs, g_params.nthreads, g_params.maxrows, (string("mat") + &blockscp[5*j]).c_str());
-         Matrix2File(stdevs, ndesc_block, 1, (string("stdevs") + &blockscp[5*j] + ".bin").c_str());
-         Matrix2File(avgs, ndesc_block, 1, (string("avgs") + &blockscp[5*j] + ".bin").c_str());
-         j++;
-      }
-      for (i = 0; i < nblocks[1]; i++) {
-         select_block(j);
-         descs.SetGrid(nullptr, nullptr, gsp, g_params.gss, blockscp, p4sym);
-         ndesc_block = descs.GetNDescriptors();
-         cout << "Descriptors in block " << &blockscp[5*j] << ": " << ndesc_block << endl;
-         calculate_descriptors(nstr, ndesc_block, n, v, &dcalc, stdevs, avgs, g_params.nthreads, g_params.maxrows, (string("mat") + &blockscp[5*j]).c_str());
-         Matrix2File(stdevs, ndesc_block, 1, (string("stdevs") + &blockscp[5*j] + ".bin").c_str());
-         Matrix2File(avgs, ndesc_block, 1, (string("avgs") + &blockscp[5*j] + ".bin").c_str());
-         j++;
-      }
-      for (i = 0; i < nblocks[2]; i++) {
-         select_block(j);
-         descs.SetGrid(nullptr, nullptr, gsp, g_params.gss, blockscp, p4sym);
-         ndesc_block = descs.GetNDescriptors();
-         cout << "Descriptors in block " << &blockscp[5*j] << ": " << ndesc_block << endl;
-         calculate_descriptors(nstr, ndesc_block, n, v, &dcalc, stdevs, avgs, g_params.nthreads, g_params.maxrows, (string("mat") + &blockscp[5*j]).c_str());
-         Matrix2File(stdevs, ndesc_block, 1, (string("stdevs") + &blockscp[5*j] + ".bin").c_str());
-         Matrix2File(avgs, ndesc_block, 1, (string("avgs") + &blockscp[5*j] + ".bin").c_str());
-         j++;
+      for (k = 0, j = 0; k < 3; k++) {
+         for (i = 0; i < nblocks[k]; i++) {
+            select_block(j);
+            descs.SetGrid(nullptr, nullptr, gsp, g_params.gss, blockscp, p4sym);
+            ndesc_block = descs.GetNDescriptors();
+            cout << "Descriptors in block " << &blockscp[5*j] << ": " << ndesc_block << endl;
+            calculate_descriptors(nstr, ndesc_block, n, v, &dcalc, stdevs, avgs, g_params.nthreads, g_params.maxrows, (string("mat") + &blockscp[5*j]).c_str());
+            Matrix2File(stdevs, ndesc_block, 1, (string("stdevs") + &blockscp[5*j] + ".bin").c_str());
+            Matrix2File(avgs, ndesc_block, 1, (string("avgs") + &blockscp[5*j] + ".bin").c_str());
+            j++;
+         }
       }
    }
    delete [] blockscp;
