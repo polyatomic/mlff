@@ -21,10 +21,10 @@ using std::ios;
 void RunTasks() {
    int i, j, k, l, nstr, n, m, ndesc, ndesc_sketch, ndesc4, nsub, ntrain,
        ndesc2, kk, ndesc3, nr, nc, np, nb_total;
-   int *ids_train, *ndescs, *ndescs_sketch, *ranks;
+   int *ids_train, *ndescs, *ndescs_sketch, *ranks, *p4sym;
    int **ids_selected, **vars_selected;
    double avg, x, rmse;
-   double *Y, *v, *rcoords, *stdevs, *avgs, *wmatc, *Yc, *stdevs_to_save, *avgs_to_save;
+   double *Y, *v, *rcoords, *stdevs, *avgs, *wmatc, *Yc, *stdevs_to_save, *avgs_to_save, *gsp;
    double **levs;
    int nblocks[3];
    char *blocks;
@@ -43,16 +43,17 @@ void RunTasks() {
    ifstream ifile;
    istringstream isstream;
    string line;
-   Y = v = wmatc = Yc = stdevs = avgs = stdevs_to_save = avgs_to_save = 0;
+   Y = v = wmatc = Yc = stdevs = avgs = stdevs_to_save = avgs_to_save = gsp = 0;
    ids_train = ndescs = ndescs_sketch = ranks = 0;
    ids_selected = vars_selected = 0;
    blocks = 0;
+   p4sym = 0;
    levs = 0;
    int prec = numeric_limits<double>::max_digits10;
    streamsize oldprec = cout.precision();
    TFunctorDaDaI<Descriptors> dcalc;
    descs.SetUseInverseSpace(g_params.uis);
-   if (!calculation_prepare(&g_params, mols, descs, nstr, n, v, Y, nblocks, &blocks)) goto end;
+   if (!calculation_prepare(&g_params, mols, descs, nstr, n, v, Y, nblocks, &blocks, &gsp, &p4sym)) goto end;
    pss = new set<int>[nblocks[0]];
    tss = new set<Triplet, TripletCompare>[nblocks[1]];
    tss_ref = new set<Triplet, TripletCompare>[nblocks[1]];
@@ -332,7 +333,9 @@ end:
    delete [] tss_ref;
    delete [] tss;
    delete [] pss;
+   delete [] p4sym;
    delete [] blocks;
+   delete [] gsp;
    delete [] v;
    delete [] Y;
 }

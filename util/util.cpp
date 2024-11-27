@@ -11,7 +11,7 @@ using std::cerr;
 using std::endl;
 using std::ios;
 
-bool File2Array(string& fn, double arr[]) {
+bool File2Array(const string& fn, double arr[]) {
    int i;
    size_t len;
    double fval;
@@ -79,13 +79,15 @@ void Matrix2File(double *X, int nrows, int ncols, const char *fn) {
    ofile.close();
 }
 
-void File2Matrix(const char *fn, int& nrows, int& ncols, double *X) {
+bool File2Matrix(const char *fn, int& nrows, int& ncols, double *X) {
    long long i;
    ifstream ifile(fn, ios::in | ios::binary);
+   if (!ifile) return false;
    ifile.read((char*)&nrows, sizeof(int));
    ifile.read((char*)&ncols, sizeof(int));
    for (i = 0; i < ((long long)nrows)*ncols; i++) ifile.read((char*)&X[i], sizeof(double));
    ifile.close();
+   return true;
 }
 
 void copy_file(const char *srce_file, const char *dest_file) {

@@ -1223,6 +1223,7 @@ void sketch_matrices2(int N, int M[], int nblocks[], int nsub, const char *wmatc
             }
             for (i=0; i < rs; i++) threads[i].join();
             for (mid=0; mid < rs; mid++) {
+               nc = M[mat_ids[mid]];
                ranks[mat_ids[mid]] = nsels[mid];
                if (id <= nblocks[0]+nblocks[1]-1) {
                   ncolsnew = ncolsprevupd + ranks[mat_ids[mid]];
@@ -1233,7 +1234,7 @@ void sketch_matrices2(int N, int M[], int nblocks[], int nsub, const char *wmatc
                         Xprevupd[i*((long long)ncolsnew)+j] = Xtmp[i*((long long)ncolsprevupd)+j];
                      }
                      for (j = 0; j < ranks[mat_ids[mid]]; j++) {
-                        Xprevupd[i*((long long)ncolsnew)+ncolsprevupd+j] = dp[i*((long long)ncols)+selected_variables[mat_ids[mid]][j]];
+                        Xprevupd[i*((long long)ncolsnew)+ncolsprevupd+j] = dp[i*((long long)nc)+selected_variables[mat_ids[mid]][j]];
                      }
                   }
                   if (mid == rs-1 && id == nblocks[0]+nblocks[1]-1) {
